@@ -47,39 +47,17 @@ Prices, free allowances, and limits depend on your provider's account plan. Sear
 
 Requires Node.js **≥22.19** and **DSH 0.2.1-rc.2**. Other DSH versions have not been verified. Do not bypass the compatibility check to force an installation.
 
-### Build from source
+### Install from npm
 
-Run these commands from the repository directory:
-
-```powershell
-pnpm install --frozen-lockfile --ignore-scripts
-node scripts/check.mjs
-npm pack --ignore-scripts
-```
-
-This produces `dsh-search-ledger-0.5.1.tgz`. You can install that local package without a published npm release.
-
-### Install into DSH
-
-Back up the target profile and plugin data, then fully stop DSH processes sharing that DSH_HOME before running:
+`dsh-search-ledger@0.5.1` is published on npm. Stop all DSH processes sharing this DSH_HOME and back up the target profile and plugin data before installing:
 
 ```powershell
-dsh plugin --profile web add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
+dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
 ```
 
-Replace `web` with your profile name.
+Replace `web` with your profile name. A plain `npm install dsh-search-ledger@0.5.1` only adds the package to the current Node project; it does not register the plugin or apply its patch in DSH. Stop DSH before updating, and do not keep the old and new packages in the same profile.
 
-For Windows Desktop, the repository includes an installer helper. It uses the desktop app's bundled pnpm so a different global pnpm/store version does not get in the way:
-
-```powershell
-# Set your actual installation path if it differs from the helper's default.
-$env:DSH_DESKTOP_APP_ROOT = "C:/path/to/DSH Desktop/resources/app"
-node ./scripts/desktop-cli.mjs plugin --profile desktop add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
-```
-
-Replace the example path. The helper does not change global pnpm/store settings or disable release-age checks by default. If `minimumReleaseAge` rejects a dependency, check it or wait for the required age. Do not delete the lockfile or turn off protection globally as a shortcut.
-
-For updates, stop DSH and install the new package the same way. Do not mix source-directory links and tarball installs in one profile.
+The repository does not provide a prebuilt tarball. If `minimumReleaseAge` rejects a dependency, check it or wait for the required age. Do not delete the lockfile or disable protection globally as a shortcut.
 
 ### Switching from the old name
 
@@ -89,10 +67,10 @@ If the old package is installed, stop DSH and back up the profile and `$DSH_HOME
 
 ```powershell
 dsh plugin --profile web remove dsh-web-search-billing
-dsh plugin --profile web add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
+dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
 ```
 
-On Desktop, use the helper above for the corresponding `remove` / `add` commands with the `desktop` profile. Internal configuration keys, credential identifiers, and the `web-search-billing` data directory keep their old names. Do not rename or delete them. After switching, check channel settings, key status, provider bindings, and historical usage before making requests.
+On Desktop, use `desktop` as the profile for the corresponding `remove` / `add` commands. Internal configuration keys, credential identifiers, and the `web-search-billing` data directory keep their old names. Do not rename or delete them. After switching, check channel settings, key status, provider bindings, and historical usage before making requests.
 
 ## Configuration
 

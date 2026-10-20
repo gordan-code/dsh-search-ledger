@@ -15,6 +15,19 @@
   ],
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gordan-code/dsh-search-ledger.git"
+  },
+  "homepage": "https://github.com/gordan-code/dsh-search-ledger#readme",
+  "bugs": {
+    "url": "https://github.com/gordan-code/dsh-search-ledger/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "packageManager": "pnpm@10.33.2",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
   "engines": {
@@ -64,6 +77,7 @@
     }
   },
   "scripts": {
+    "prepublishOnly": "node scripts/check.mjs",
     "test": "node scripts/test.mjs",
     "test:watch": "vitest",
     "typecheck": "node scripts/typecheck.mjs",

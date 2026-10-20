@@ -47,39 +47,17 @@ Key 可以直接在界面填写，也可以逐个测试。测试需要先确认�
 
 需要 Node.js **≥22.19** 和 **DSH 0.2.1-rc.2**。其他 DSH 版本还没有验证，不建议跳过兼容检查强行安装。
 
-### 从源码构建
+### 从 npm 安装
 
-在仓库目录运行：
-
-```powershell
-pnpm install --frozen-lockfile --ignore-scripts
-node scripts/check.mjs
-npm pack --ignore-scripts
-```
-
-会生成 `dsh-search-ledger-0.5.1.tgz`，可以直接用本地包安装，不依赖 npm 在线发布。
-
-### 安装到 DSH
-
-先备份目标 Profile 和插件数据，完全退出共享该 DSH_HOME 的 DSH 进程，再执行：
+`dsh-search-ledger@0.5.1` 已发布到 npm。先停止共享该 DSH_HOME 的 DSH 进程，备份目标 Profile 和插件数据，再安装：
 
 ```powershell
-dsh plugin --profile web add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
+dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
 ```
 
-把 `web` 换成实际使用的 Profile 名称。
+把 `web` 换成实际 Profile。普通 `npm install dsh-search-ledger@0.5.1` 只会把包加入当前 Node 项目，不会替 DSH 注册插件或应用 patch。更新前也先退出 DSH；同一 Profile 不要混用旧包和新包。
 
-Windows 桌面版可以用仓库里的安装脚本。它调用桌面自带的 pnpm，避免全局 pnpm 和桌面依赖使用不同 store 版本：
-
-```powershell
-# 如果与脚本默认安装位置不同，先填本机实际路径。
-$env:DSH_DESKTOP_APP_ROOT = "C:/path/to/DSH Desktop/resources/app"
-node ./scripts/desktop-cli.mjs plugin --profile desktop add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
-```
-
-示例路径需要替换。脚本不会改全局 pnpm/store 配置，默认也不会关闭依赖发布时间检查。遇到 `minimumReleaseAge` 拒绝时，先检查依赖或等待版本满足时间要求，不要直接删除锁文件或全局关闭保护。
-
-更新也是先退出 DSH，再安装新包。同一个 Profile 不要混用源码目录 link 和 tgz 安装。
+仓库不提供预生成的 tgz 文件。遇到 `minimumReleaseAge` 拒绝时，先检查依赖或等待版本满足时间要求，不要删除锁文件或全局关闭保护。
 
 ### 从旧名称切换
 
@@ -89,10 +67,10 @@ node ./scripts/desktop-cli.mjs plugin --profile desktop add "./dsh-search-ledger
 
 ```powershell
 dsh plugin --profile web remove dsh-web-search-billing
-dsh plugin --profile web add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
+dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
 ```
 
-桌面版请用前面的安装脚本执行对应的 `remove` / `add`，Profile 换成 `desktop`。内部配置键、凭据标识和 `web-search-billing` 数据目录保留旧名，不要手动改名或删除。切换后检查渠道配置、Key 状态、Provider 绑定及历史用量，再开始使用。
+桌面版将 Profile 换成 `desktop`，执行对应的 `remove` / `add`。内部配置键、凭据标识和 `web-search-billing` 数据目录保留旧名，不要手动改名或删除。切换后检查渠道配置、Key 状态、Provider 绑定及历史用量，再开始使用。
 
 ## 配置
 
