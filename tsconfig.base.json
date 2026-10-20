@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "target": "ES2023", "module": "NodeNext", "moduleResolution": "NodeNext",
+    "strict": true, "skipLibCheck": true, "esModuleInterop": true,
+    "allowImportingTsExtensions": true, "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true, "declaration": true,
+    "useDefineForClassFields": true
+  }
+}

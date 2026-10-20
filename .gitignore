@@ -1,0 +1,8 @@
+node_modules/
+.pnpm-store/
+lib/
+coverage/
+.validation/
+*.sqlite*
+.env
+.env.*

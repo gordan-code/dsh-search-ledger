@@ -1,0 +1,100 @@
+{
+  "name": "dsh-web-search-billing",
+  "version": "0.5.1",
+  "description": "DSH 搜索渠道路由、Search/Fetch 用量与费用统计",
+  "type": "module",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "engines": {
+    "node": ">=22.19.0",
+    "dsh": "0.2.1-rc.2"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./typert": "./lib/typert.host.js",
+    "./types": {
+      "types": "./lib/types/contracts.d.ts",
+      "default": "./lib/contracts.js"
+    },
+    "./remote": {
+      "types": "./lib/typert.remote-client.d.ts",
+      "default": "./lib/typert.remote-client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "examples/"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-api-remotes"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node scripts/test.mjs",
+    "test:watch": "vitest",
+    "typecheck": "node scripts/typecheck.mjs",
+    "bundle": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-agent": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-api-remotes": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-app-boot": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-credentials": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-settings": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-web": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-web-fetch-http": "0.2.1-rc.2",
+    "@deepseek-ai/schemastery": "^3.0.0",
+    "react": "^18.3.1"
+  },
+  "dependencies": {
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-api-gateway": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-api-remote-access": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-modules": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-typert-generator": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-typert-registry": "0.2.1-rc.2",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "jsdom": "^26.1.0",
+    "react-dom": "^18.3.1",
+    "tsdown": "^0.23.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
+  }
+}

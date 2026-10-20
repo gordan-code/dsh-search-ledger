@@ -1,0 +1,90 @@
+# 安装本插件后，将以下覆盖合并到目标profile的cordis.patch.yml。
+# 不包含真实密钥；provider ID和价格仅为示例，需按宿主/中转实际配置修改。
+- id: web-search-billing
+  config:
+    channels:
+      - id: deepseek-official-api
+        name: DeepSeek 官方 API
+        kind: deepseek-api
+        billingClass: official
+        enabled: true
+        endpointBase: https://api.deepseek.com/v1/tools
+        credentialRef: DEEPSEEK_API_KEY
+        capabilities: [search, fetch]
+        prices:
+          search: { perThousand: '5', currency: CNY, policy: official-nonempty }
+          fetch: { perThousand: '5', currency: CNY, policy: official-nonempty }
+      - id: relay-tools
+        name: 我的中转
+        kind: deepseek-api
+        billingClass: relay
+        enabled: false
+        endpointBase: https://relay.example.com/v1/tools
+        credentialRef: RELAY_API_KEY
+        capabilities: [search, fetch]
+        prices:
+          search: { perThousand: null, currency: CNY, policy: official-nonempty }
+          fetch: { perThousand: null, currency: CNY, policy: official-nonempty }
+      - id: local-http
+        name: 本地 HTTP 抓取
+        kind: local-http
+        billingClass: free
+        enabled: true
+        endpointBase: ''
+        capabilities: [fetch]
+        prices:
+          fetch: { perThousand: '0', currency: CNY, policy: free }
+      - id: self-hosted-searxng
+        name: 自建 SearXNG
+        kind: searxng
+        billingClass: free
+        enabled: false
+        endpointBase: https://search.example.com
+        capabilities: [search]
+        prices:
+          search: { perThousand: '0', currency: CNY, policy: free }
+      - id: tinyfish-service
+        name: TinyFish Search / Fetch
+        kind: tinyfish
+        billingClass: service
+        enabled: false
+        endpointBase: https://api.search.tinyfish.ai
+        credentialRef: TINYFISH_API_KEY
+        capabilities: [search, fetch]
+        prices:
+          search: { perThousand: null, currency: CNY, policy: provider-success }
+          fetch: { perThousand: null, currency: CNY, policy: provider-success }
+      - id: qianfan-service
+        name: 百度千帆 Search
+        kind: qianfan
+        billingClass: service
+        enabled: false
+        endpointBase: https://qianfan.baidubce.com/v2/ai_search/web_search
+        credentialRef: QIANFAN_API_KEY
+        capabilities: [search]
+        prices:
+          search: { perThousand: null, currency: CNY, policy: provider-success }
+      - id: tavily-service
+        name: Tavily Search / Extract
+        kind: tavily
+        billingClass: service
+        enabled: false
+        endpointBase: https://api.tavily.com
+        credentialRef: TAVILY_API_KEY
+        monthlyCredits: 1000
+        capabilities: [search, fetch]
+        prices:
+          search: { perThousand: null, currency: CNY, policy: provider-success }
+          fetch: { perThousand: null, currency: CNY, policy: provider-success }
+    providerBindings:
+      deepseek-official:
+        search: deepseek-official-api
+        fetch: local-http
+      my-relay-provider:
+        search: relay-tools
+        fetch: relay-tools
+    globalOverrides: {}
+    # 显式改为true才允许有序收费接力；单个胜出首选优先，其余按上方顺序。
+    failover:
+      search: { enabled: false, attemptTimeoutMs: 20000, totalTimeoutMs: 60000 }
+      fetch: { enabled: false, attemptTimeoutMs: 20000, totalTimeoutMs: 60000 }
