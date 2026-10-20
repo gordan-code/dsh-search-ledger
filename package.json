@@ -1,7 +1,18 @@
 {
-  "name": "dsh-web-search-billing",
+  "name": "dsh-search-ledger",
   "version": "0.5.1",
-  "description": "DSH 搜索渠道路由、Search/Fetch 用量与费用统计",
+  "description": "Provider-aware web search and fetch routing, key rotation, failover, and cost tracking for DSH",
+  "keywords": [
+    "dsh",
+    "deepseek",
+    "web-search",
+    "web-fetch",
+    "provider-routing",
+    "billing",
+    "cost-tracking",
+    "key-rotation",
+    "failover"
+  ],
   "type": "module",
   "license": "MIT",
   "main": "lib/index.js",

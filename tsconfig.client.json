@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
-  "compilerOptions": { "outDir": "lib/types", "jsx": "react-jsx", "lib": ["ES2023", "DOM", "DOM.Iterable"], "paths": { "dsh-web-search-billing/types": ["./src/contracts.ts"] } },
+  "compilerOptions": { "outDir": "lib/types", "jsx": "react-jsx", "lib": ["ES2023", "DOM", "DOM.Iterable"], "paths": { "dsh-search-ledger/types": ["./src/contracts.ts"] } },
   "include": ["src/client/**/*", "src/contracts.ts"]
 }

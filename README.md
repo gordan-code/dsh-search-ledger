@@ -1,4 +1,4 @@
-# DSH Web Search Billing
+# DSH Search Ledger
 
 **简体中文** · [English](./README.en.md)
 
@@ -57,14 +57,14 @@ node scripts/check.mjs
 npm pack --ignore-scripts
 ```
 
-会生成 `dsh-web-search-billing-0.5.1.tgz`，可以直接用本地包安装，不依赖 npm 在线发布。
+会生成 `dsh-search-ledger-0.5.1.tgz`，可以直接用本地包安装，不依赖 npm 在线发布。
 
 ### 安装到 DSH
 
 先备份目标 Profile 和插件数据，完全退出共享该 DSH_HOME 的 DSH 进程，再执行：
 
 ```powershell
-dsh plugin --profile web add "./dsh-web-search-billing-0.5.1.tgz" --ignore-scripts
+dsh plugin --profile web add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
 ```
 
 把 `web` 换成实际使用的 Profile 名称。
@@ -74,16 +74,29 @@ Windows 桌面版可以用仓库里的安装脚本。它调用桌面自带的 pn
 ```powershell
 # 如果与脚本默认安装位置不同，先填本机实际路径。
 $env:DSH_DESKTOP_APP_ROOT = "C:/path/to/DSH Desktop/resources/app"
-node ./scripts/desktop-cli.mjs plugin --profile desktop add "./dsh-web-search-billing-0.5.1.tgz" --ignore-scripts
+node ./scripts/desktop-cli.mjs plugin --profile desktop add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
 ```
 
 示例路径需要替换。脚本不会改全局 pnpm/store 配置，默认也不会关闭依赖发布时间检查。遇到 `minimumReleaseAge` 拒绝时，先检查依赖或等待版本满足时间要求，不要直接删除锁文件或全局关闭保护。
 
 更新也是先退出 DSH，再安装新包。同一个 Profile 不要混用源码目录 link 和 tgz 安装。
 
+### 从旧名称切换
+
+项目原名为 `dsh-web-search-billing`，现改为 `dsh-search-ledger`。版本号仍为 0.5.1，改名不改变计费逻辑。
+
+如果已经安装旧包，先退出 DSH，备份 Profile 和 `$DSH_HOME/web-search-billing/`，移除旧包后再安装新包。不要把两个包同时装进同一个 Profile：它们使用同一组配置入口和工具后端，会发生冲突。
+
+```powershell
+dsh plugin --profile web remove dsh-web-search-billing
+dsh plugin --profile web add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
+```
+
+桌面版请用前面的安装脚本执行对应的 `remove` / `add`，Profile 换成 `desktop`。内部配置键、凭据标识和 `web-search-billing` 数据目录保留旧名，不要手动改名或删除。切换后检查渠道配置、Key 状态、Provider 绑定及历史用量，再开始使用。
+
 ## 配置
 
-重启 DSH 后，在设置侧边栏打开 **搜索渠道与费用**，按下面的顺序配置：
+重启 DSH 后，在设置侧边栏打开 **DSH 搜索账本**，按下面的顺序配置：
 
 1. 在 **渠道管理** 添加渠道，填写名称、地址和费率，保存渠道配置。新建渠道默认停用，不会自动发送请求。
 2. 展开渠道，在 **API Key** 区域每行输入一个 Key，保存 Key 池。之后再次保存会替换整个池，不是追加。已经保存的 Key 不会显示出来。
@@ -146,7 +159,7 @@ Key 池保存在宿主凭据存储中，按 DSH_HOME、Profile 和渠道隔离�
 不会。退出 DSH 后运行下面的命令，把 `web` 换成实际 Profile：
 
 ```powershell
-dsh plugin --profile web remove dsh-web-search-billing
+dsh plugin --profile web remove dsh-search-ledger
 ```
 
 卸载不会自动擦除历史数据。

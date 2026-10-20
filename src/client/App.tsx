@@ -106,7 +106,7 @@ export function App({ api, form, initialTab = 0 }: AppProps) {
       <header className="dsh-header">
         <div className="dsh-header-copy">
           <div className="dsh-eyebrow">DSH native web</div>
-          <h1>搜索渠道与费用</h1>
+          <h1>DSH 搜索账本</h1>
           <p className="dsh-subtitle">配置 Search / Fetch 的实际接入路径，保留本地计量证据；费用仅代表本插件可观测范围。</p>
         </div>
         <Badge tone={status?.active ? 'success' : status ? 'warning' : 'neutral'}>{status?.active ? '运行中' : status ? '需要检查' : '读取中'}</Badge>

@@ -9,7 +9,7 @@ export default defineConfig([{
 }, {
   // DSH使用classic script中的懒CJS factory，不接受顶层ESM import/export。
   entry: { client: 'src/client/index.ts' }, format: 'cjs', platform: 'browser', outDir: 'lib', clean: false, dts: false,
-  banner: 'window.__ModuleLoader__.load({ id: "dsh-web-search-billing", factory: (require) => { var module = { exports: {} }; var exports = module.exports;',
+  banner: 'window.__ModuleLoader__.load({ id: "dsh-search-ledger", factory: (require) => { var module = { exports: {} }; var exports = module.exports;',
   footer: 'return module.exports; } });',
   outExtensions: () => ({ js: '.js' }), deps: { neverBundle: ['react', 'react/jsx-runtime'], alwaysBundle: ['zod', '@deepseek-ai/dsh-typert-protocol/remote-info'] },
 }])

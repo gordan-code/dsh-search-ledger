@@ -96,7 +96,7 @@ try {
   assert.equal(ctx.profileContext.home, root)
   const status = ctx.webSearchBilling.getStatus()
   assert.equal(status.version, '0.5.1', '必须验证新版而非旧安装缓存')
-  assert.ok(ctx.typert.getPackage('dsh-web-search-billing', 'host'), 'Host反射须由真实Typert Loader登记')
+  assert.ok(ctx.typert.getPackage('dsh-search-ledger', 'host'), 'Host反射须由真实Typert Loader登记')
   assert.equal(status.active, true)
   assert.equal(status.configError, null)
   assert.ok(ctx.settings.describe().some(row => String(row.ns) === 'web-search-billing'))

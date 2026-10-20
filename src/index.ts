@@ -24,6 +24,7 @@ import { BillingError } from './contracts.ts'
 import type { AttemptFilter } from './contracts.ts'
 export { Config } from './config.ts'
 export { BillingController } from './host/controller.ts'
+// 保留旧命名空间，与已安装实例的Settings、凭据和账本身份兼容；发布包名为dsh-search-ledger。
 export const name = 'web-search-billing'
 export const inject = ['web', 'credentials', 'typert', 'profileContext']
 const filterSchema = z.object({ from: z.iso.datetime().optional(), to: z.iso.datetime().optional(), channelId: z.string().max(80).optional(), sourceProviderId: z.string().max(160).optional(), sessionId: z.string().max(160).optional(), currency: z.enum(['CNY', 'USD']).optional() }).strict()

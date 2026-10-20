@@ -1,7 +1,7 @@
 # 将既有Web工具指向计量路由器；不删除宿主其他后端。
 - insert:
     - id: web-search-billing
-      name: dsh-web-search-billing
+      name: dsh-search-ledger
 - id: web
   config:
     searchProvider: web-search-metered

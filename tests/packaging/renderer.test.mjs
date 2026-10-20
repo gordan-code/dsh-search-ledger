@@ -23,8 +23,8 @@ test('Renderer实际Loader可注册并materialize插件，依赖只使用宿主R
     loadBundle: async () => { throw new Error('本测试禁止网络') },
   })
   const clientCode = readFileSync(new URL('../../lib/client.js', import.meta.url), 'utf8')
-  new Script(clientCode, { filename: 'dsh-web-search-billing-client.js' }).runInContext(context)
-  const client = await modules.import('dsh-web-search-billing')
+  new Script(clientCode, { filename: 'dsh-search-ledger-client.js' }).runInContext(context)
+  const client = await modules.import('dsh-search-ledger')
   assert.equal(typeof client.apply, 'function')
   assert.deepEqual(Array.from(client.inject), ['remote'])
   // 进一步经过真实Cordis和Remote挂载，不只是检查包里有没有某段文本。
@@ -43,7 +43,7 @@ test('Renderer实际Loader可注册并materialize插件，依赖只使用宿主R
       assert.equal(meta.name, 'settings.section')
       assert.equal(meta.id, 'web-search-billing')
       assert.equal(meta.order, 21)
-      assert.equal(meta.label(), '搜索渠道与费用')
+      assert.equal(meta.label(), 'DSH 搜索账本')
       panel = component; return () => { removed = true }
     },
   })

@@ -1,4 +1,4 @@
-# DSH Web Search Billing
+# DSH Search Ledger
 
 [简体中文](./README.md) · **English**
 
@@ -57,14 +57,14 @@ node scripts/check.mjs
 npm pack --ignore-scripts
 ```
 
-This produces `dsh-web-search-billing-0.5.1.tgz`. You can install that local package without a published npm release.
+This produces `dsh-search-ledger-0.5.1.tgz`. You can install that local package without a published npm release.
 
 ### Install into DSH
 
 Back up the target profile and plugin data, then fully stop DSH processes sharing that DSH_HOME before running:
 
 ```powershell
-dsh plugin --profile web add "./dsh-web-search-billing-0.5.1.tgz" --ignore-scripts
+dsh plugin --profile web add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
 ```
 
 Replace `web` with your profile name.
@@ -74,16 +74,29 @@ For Windows Desktop, the repository includes an installer helper. It uses the de
 ```powershell
 # Set your actual installation path if it differs from the helper's default.
 $env:DSH_DESKTOP_APP_ROOT = "C:/path/to/DSH Desktop/resources/app"
-node ./scripts/desktop-cli.mjs plugin --profile desktop add "./dsh-web-search-billing-0.5.1.tgz" --ignore-scripts
+node ./scripts/desktop-cli.mjs plugin --profile desktop add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
 ```
 
 Replace the example path. The helper does not change global pnpm/store settings or disable release-age checks by default. If `minimumReleaseAge` rejects a dependency, check it or wait for the required age. Do not delete the lockfile or turn off protection globally as a shortcut.
 
 For updates, stop DSH and install the new package the same way. Do not mix source-directory links and tarball installs in one profile.
 
+### Switching from the old name
+
+The project was previously called `dsh-web-search-billing` and is now `dsh-search-ledger`. The version remains 0.5.1; the rename does not change billing behavior.
+
+If the old package is installed, stop DSH and back up the profile and `$DSH_HOME/web-search-billing/` first. Remove the old package before installing the new one. Do not install both in the same profile: they share configuration entries and tool backends and will conflict.
+
+```powershell
+dsh plugin --profile web remove dsh-web-search-billing
+dsh plugin --profile web add "./dsh-search-ledger-0.5.1.tgz" --ignore-scripts
+```
+
+On Desktop, use the helper above for the corresponding `remove` / `add` commands with the `desktop` profile. Internal configuration keys, credential identifiers, and the `web-search-billing` data directory keep their old names. Do not rename or delete them. After switching, check channel settings, key status, provider bindings, and historical usage before making requests.
+
 ## Configuration
 
-After restarting DSH, open **搜索渠道与费用** in the settings sidebar. The UI currently uses Chinese labels; they are included below so you can find the controls.
+After restarting DSH, open **DSH 搜索账本** in the settings sidebar. The UI currently uses Chinese labels; they are included below so you can find the controls.
 
 1. Add a channel under **渠道管理**, enter its name, endpoint, and prices, then save the channel configuration. New channels start disabled and do not send requests automatically.
 2. Expand the channel, enter one key per line under **API Key**, and save the pool. Saving again replaces the whole pool; it does not append keys. Saved values are not displayed.
@@ -146,7 +159,7 @@ No. That warning protects accounting history. It does not disable the channel or
 No. Stop DSH, then run this command with your actual profile name instead of `web`:
 
 ```powershell
-dsh plugin --profile web remove dsh-web-search-billing
+dsh plugin --profile web remove dsh-search-ledger
 ```
 
 Uninstalling does not automatically erase historical data.

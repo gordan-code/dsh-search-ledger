@@ -17,7 +17,7 @@ it('Host贡献仅由Typert Loader登记，插件apply不能抢先注册导致重
   new WebRuntime(ctx, { searchProvider: { get: () => 'web-search-metered' }, fetchProvider: { get: () => 'web-fetch-metered' } } as never)
   const config = Object.fromEntries(Object.entries(DEFAULT_CONFIG).map(([key, value]) => [key, { get: () => value }]))
   plugin.apply(ctx, config as never)
-  expect(registry.getPackage('dsh-web-search-billing', 'host')).toBeUndefined()
+  expect(registry.getPackage('dsh-search-ledger', 'host')).toBeUndefined()
   expect(() => registry.register(TYPERT)).not.toThrow()
 })
 it('Host入口能注册两个router并通过宿主available预检查', async () => {

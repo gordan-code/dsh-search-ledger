@@ -18,7 +18,7 @@ export function apply(ctx: Context): void {
       const api = billingApi(child.remote.webSearchBilling)
       const Panel = () => React.createElement(App, { api, form })
       // 挂到设置侧边栏（settings.section），与「通用/模型/插件」并列，而不是插件管理器的内置插件列表。
-      child.effect(() => child.configForms.whileServed(['web-search-billing'], () => child.slots.inject('settings.section', () => child.slots.register({ name: 'settings.section', id: 'web-search-billing', order: 21, label: () => '搜索渠道与费用' }, Panel))))
+      child.effect(() => child.configForms.whileServed(['web-search-billing'], () => child.slots.inject('settings.section', () => child.slots.register({ name: 'settings.section', id: 'web-search-billing', order: 21, label: () => 'DSH 搜索账本' }, Panel))))
     },
   })
 }
