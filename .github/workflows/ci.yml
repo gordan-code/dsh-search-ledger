@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.19.0', '24']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm check
+
+      - name: Check published files
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm pack --dry-run --json --ignore-scripts | node -e '
+            let input = "";
+            process.stdin.on("data", chunk => input += chunk);
+            process.stdin.on("end", () => {
+              const files = new Set(JSON.parse(input)[0].files.map(file => file.path));
+              for (const required of ["lib/client.js", "cordis.patch.yml"]) {
+                if (!files.has(required)) throw new Error(`Missing package file: ${required}`);
+              }
+            });
+          '
