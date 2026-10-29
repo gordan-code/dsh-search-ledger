@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
+import { createHash } from 'node:crypto'
+import { credentialKey } from '@deepseek-ai/dsh-credentials'
 import type { CredentialRecord } from '@deepseek-ai/dsh-credentials'
 import { ChannelCredentials } from '../../src/host/channel-credentials.ts'
 import { DEFAULT_CONFIG } from '../../src/config-schema.ts'
@@ -115,5 +117,22 @@ describe('渠道多Key凭证安全边界', () => {
     expect(credentials.resolve).not.toHaveBeenCalled()
     channels[0]!.credentialRef = 'NEW_REF'
     expect(await manager.resolve(channels[0]!, false)).toEqual(['key-a', 'key-b', 'key-c'])
+  })
+})
+
+describe('旧版凭据迁移边界', () => {
+  it('旧 Key 池不会被新命名空间自动读取，重新输入不会修改旧记录', async () => {
+    const { manager, records, channels } = setup('legacy-profile')
+    const digest = createHash('sha256').update(JSON.stringify(['legacy-profile', id])).digest('hex')
+    const legacyKey = credentialKey('web-search-billing', `channel-${digest}`)
+    records.set(legacyKey, { kind: 'grant', payload: { version: 1, keys: ['synthetic-old'] } } as CredentialRecord)
+    expect(await manager.get(id, ref)).toMatchObject({ configured: false, keyCount: 0, source: 'none' })
+    expect(await manager.resolve(channels[0]!, false)).toEqual([])
+    expect(await manager.set(id, ref, ['synthetic-new'])).toMatchObject({ configured: true, keyCount: 1, source: 'pool' })
+    expect(await manager.resolve(channels[0]!, false)).toEqual(['synthetic-new'])
+    expect(records.get(legacyKey)).toEqual({ kind: 'grant', payload: { version: 1, keys: ['synthetic-old'] } })
+    await manager.unset(id, ref)
+    expect(records.get(legacyKey)).toBeDefined()
+    expect(await manager.resolve(channels[0]!, false)).toEqual([])
   })
 })

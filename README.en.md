@@ -6,7 +6,7 @@ Channel management and cost tracking for DSH's native `web_search` and `web_fetc
 
 If you use DeepSeek's official API alongside a relay or another search service, you need to decide where each request goes, what happens when it fails, and how to count the cost. This plugin puts those settings and records in one place. Bind search channels to model providers, manage each channel's keys, and inspect the actual requests in a local ledger.
 
-The development version **0.6.0** targets **DSH 0.2.1-rc.2 and 0.2.1-rc.3**. It tracks search and fetch requests routed through the plugin, not model-token usage. The costs shown are local estimates, not provider invoices.
+Version **0.6.1** targets **DSH 0.2.1-rc.2 and 0.2.1-rc.3**. It tracks search and fetch requests routed through the plugin, not model-token usage. The costs shown are local estimates, not provider invoices.
 
 ## Features
 
@@ -47,33 +47,30 @@ Prices, free allowances, and limits depend on your provider's account plan. Sear
 
 ## Installation
 
-The development version requires Node.js **≥22.19** and **DSH 0.2.1-rc.2 or 0.2.1-rc.3**. Other DSH versions have not been verified. Do not bypass the compatibility check to force an installation.
+This version requires Node.js **≥22.19** and **DSH 0.2.1-rc.2 or 0.2.1-rc.3**. Other DSH versions have not been verified. Do not bypass the compatibility check to force an installation.
 
 ### Install from npm
 
-`dsh-search-ledger@0.5.1` is published on npm but supports only DSH 0.2.1-rc.2; the development version's rc.3 support has not been published. Stop all DSH processes sharing this DSH_HOME and back up the target profile and plugin data before installing:
+Stop all DSH processes sharing the DSH_HOME and back up the target profile and plugin data before installing:
 
 ```powershell
-dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
-```
-
-Replace `web` with your profile name. A plain `npm install dsh-search-ledger@0.5.1` only adds the package to the current Node project; it does not register the plugin or apply its patch in DSH. Stop DSH before updating, and do not keep the old and new packages in the same profile.
-
-The repository does not provide a prebuilt tarball. If `minimumReleaseAge` rejects a dependency, check it or wait for the required age. Do not delete the lockfile or disable protection globally as a shortcut.
-
-### Switching from the old name
-
-The project was previously called `dsh-web-search-billing` and is now `dsh-search-ledger`. From 0.6.1 on, the internal identities match the package name: the Loader entry id, the Settings namespace, the credential namespace, the service name, and the data directory all use `dsh-search-ledger`.
-
-When upgrading from 0.6.0 or earlier, stop DSH first and rename the whole `$DSH_HOME/web-search-billing/` directory to `$DSH_HOME/dsh-search-ledger/`. Move `usage.sqlite` and `installation-salt` together: historical usage and the quota subject are keyed on those two files, and a missing one looks like a fresh install. Then remove the old package and install the new one. Do not install both in the same profile: they share configuration entries and tool backends and will conflict.
-
-```powershell
-dsh plugin --profile web remove dsh-web-search-billing
 dsh plugin --profile web add "dsh-search-ledger@0.6.1" --ignore-scripts
 ```
 
-On Desktop, use `desktop` as the profile for the corresponding `remove` / `add` commands. After switching, check channel settings, key status, provider bindings, and historical usage before making requests.
+Replace `web` with your profile name. A plain `npm install` adds the package to a Node project; it does not register the plugin or apply its patch in DSH. If `minimumReleaseAge` rejects a dependency, check it or wait for the required age. Do not delete the lockfile or disable protection globally.
 
+### Upgrading from 0.6.0 or earlier
+
+**This version does not automatically migrate the old configuration, credentials, or ledger.** The old channel configuration and key pools are not automatically migrated. You may need to restore the configuration and re-enter keys. Saved pool values are not displayed; if you no longer have them, regenerate them with the provider. Do not put keys in configuration files.
+
+1. Stop every DSH process sharing the DSH_HOME. Back up the whole profile, host credential store, and `$DSH_HOME/web-search-billing/`, including the database, related files, and `installation-salt`. Do not copy only a live database.
+2. Check `$DSH_HOME/dsh-search-ledger/`. **If the destination directory exists, stop**: it may contain a newer ledger. Do not overwrite, delete, or merge either directory; preserve both and resolve the conflict first.
+3. Only when the destination does not exist and all processes are stopped, copy the entire old directory to the new name and keep the original backup. Keep the database and `installation-salt` together. This copies the ledger only, not configuration or keys.
+4. Inspect the profile for the old `web-search-billing` configuration entry. After backing up, migrate the relevant channel, provider binding, override, and failover settings to the `dsh-search-ledger` entry. Do not blindly replace other plugins' configuration.
+5. Check the installed package name: 0.5.1 already uses `dsh-search-ledger`, while earlier versions may use `dsh-web-search-billing`. Upgrade or remove the installed package accordingly; do not install both in one profile.
+6. Restart and inspect the historical ledger, channels, routing, and key status. Re-enter and save old pool keys for the new channels, then verify before sending requests. Keep the original backup until verification is complete.
+
+This manual procedure has not been validated for every host configuration or conflict. If the configuration source or destination state is unclear, stop and preserve the backups rather than forcing the migration.
 ## Configuration
 
 After restarting DSH, open **DSH 搜索账本** in the settings sidebar. The UI currently uses Chinese labels; they are included below so you can find the controls.

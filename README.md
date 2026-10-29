@@ -6,7 +6,7 @@ DSH 原生 `web_search` / `web_fetch` 的渠道管理和费用统计插件。
 
 在 DSH 里同时用 DeepSeek 官方 API、中转和其他搜索服务时，搜索该走哪个渠道、失败后换谁、用了多少次，都需要分开配置和查看。这个插件把这些事放到一个页面里：按模型 Provider 绑定搜索渠道，管理每个渠道的 Key，再用本地账本记录实际请求。
 
-当前开发版本为 **0.6.0**，适配 **DSH 0.2.1-rc.2 / 0.2.1-rc.3**。它统计的是经过插件的搜索和抓取请求，不是模型 Token 用量；显示的费用是本地估算，不能代替服务商账单。
+当前版本为 **0.6.1**，适配 **DSH 0.2.1-rc.2 / 0.2.1-rc.3**。它统计的是经过插件的搜索和抓取请求，不是模型 Token 用量；显示的费用是本地估算，不能代替服务商账单。
 
 ## 功能
 
@@ -47,33 +47,30 @@ Key 可以直接在界面填写，也可以逐个测试。测试需要先确认�
 
 ## 安装
 
-开发版本需要 Node.js **≥22.19** 和 **DSH 0.2.1-rc.2 或 0.2.1-rc.3**。其他 DSH 版本还没有验证，不建议跳过兼容检查强行安装。
+本版本需要 Node.js **≥22.19** 和 **DSH 0.2.1-rc.2 或 0.2.1-rc.3**。其他 DSH 版本还没有验证，不建议跳过兼容检查强行安装。
 
 ### 从 npm 安装
 
-`dsh-search-ledger@0.5.1` 已发布到 npm，但仅支持 DSH 0.2.1-rc.2；开发版本的 rc.3 适配尚未发布。先停止共享该 DSH_HOME 的 DSH 进程，备份目标 Profile 和插件数据，再安装：
+安装前先退出共享 DSH_HOME 的 DSH 进程，备份目标 Profile 和插件数据：
 
 ```powershell
-dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
-```
-
-把 `web` 换成实际 Profile。普通 `npm install dsh-search-ledger@0.5.1` 只会把包加入当前 Node 项目，不会替 DSH 注册插件或应用 patch。更新前也先退出 DSH；同一 Profile 不要混用旧包和新包。
-
-仓库不提供预生成的 tgz 文件。遇到 `minimumReleaseAge` 拒绝时，先检查依赖或等待版本满足时间要求，不要删除锁文件或全局关闭保护。
-
-### 从旧名称切换
-
-项目原名为 `dsh-web-search-billing`，现改为 `dsh-search-ledger`。自 0.6.1 起，内部身份标识与包名统一：Loader 条目 id、Settings 命名空间、凭据命名空间、服务名和数据目录全部使用 `dsh-search-ledger`，不再保留旧名。
-
-从 0.6.0 或更早版本升级时，先退出 DSH，把 `$DSH_HOME/web-search-billing/` 整个目录改名为 `$DSH_HOME/dsh-search-ledger/`。目录里的 `usage.sqlite` 与 `installation-salt` 必须一起搬：历史用量和配额主体都按这两个文件认身份，缺一个就会被当成全新安装。随后移除旧包、安装新包。不要把两个包同时装进同一个 Profile：它们使用同一组配置入口和工具后端，会发生冲突。
-
-```powershell
-dsh plugin --profile web remove dsh-web-search-billing
 dsh plugin --profile web add "dsh-search-ledger@0.6.1" --ignore-scripts
 ```
 
-桌面版将 Profile 换成 `desktop`，执行对应的 `remove` / `add`。切换后检查渠道配置、Key 状态、Provider 绑定及历史用量，再开始使用。
+把 `web` 换成实际 Profile。普通 `npm install` 只会把包加入当前 Node 项目，不会替 DSH 注册插件或应用 patch。遇到 `minimumReleaseAge` 拒绝时，先检查依赖或等待版本满足时间要求，不要删除锁文件或全局关闭保护。
 
+### 从 0.6.0 或更早版本升级
+
+**此版本不会自动迁移旧配置、凭据和账本。**旧渠道配置与 Key 池不会自动迁移；升级后可能需要恢复配置并重新填写 Key。旧池 Key 不会在界面回显，如没有留存，请在服务商处重新生成；不要把 Key 写入配置文件。
+
+1. 完全退出共享该 DSH_HOME 的所有 DSH 进程，先备份整个 Profile、宿主凭据存储以及 `$DSH_HOME/web-search-billing/`。备份须包含数据库及相关文件和 `installation-salt`，不要只复制正在写入的数据库。
+2. 检查 `$DSH_HOME/dsh-search-ledger/`：**目标目录已存在时停止**，不要覆盖、删除或合并；其中可能已有新账本。保留两份数据并先确认迁移方案。
+3. 目标目录不存在且确认全部进程已停止时，可将旧目录完整复制到新目录，保留原目录作为备份。数据库及 `installation-salt` 必须一起保留；这一步只处理账本，不会迁移配置和 Key。
+4. 在 Profile 配置中检查旧的 `web-search-billing` 配置入口；备份后将相关渠道、Provider 绑定、覆盖和故障转移配置迁移到 `dsh-search-ledger` 对应入口。不要盲目替换其他插件的配置。
+5. 确认当前安装的包名：0.5.1 的包名已是 `dsh-search-ledger`，早期包可能是 `dsh-web-search-billing`。按实际情况升级或先移除旧包；不要在同一 Profile 中同时安装两个包。
+6. 重启后检查历史账本、渠道配置、路由与 Key 状态。旧池 Key 需要在新渠道中重新输入并保存；确认无误后再发起请求。原始备份应保留到验证完成。
+
+此手动流程尚未覆盖所有宿主配置和冲突场景；迁移前如不确定配置来源或目标目录状态，先停止并保留备份，不要强制继续。
 ## 配置
 
 重启 DSH 后，在设置侧边栏打开 **DSH 搜索账本**，按下面的顺序配置：
