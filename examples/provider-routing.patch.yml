@@ -1,6 +1,6 @@
 # 安装本插件后，将以下覆盖合并到目标profile的cordis.patch.yml。
 # 不包含真实密钥；provider ID和价格仅为示例，需按宿主/中转实际配置修改。
-- id: web-search-billing
+- id: dsh-search-ledger
   config:
     channels:
       - id: deepseek-official-api

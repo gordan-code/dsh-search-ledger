@@ -1,8 +1,13 @@
 // 浏览器只依赖脱敏协议，不引入任何Host服务或Node模块。
-import type { AttemptFilter, AttemptPage, CandidateState, ChannelState, ChannelCredentialState, KeyTestBatch, Operation, PluginStatus, ProviderView, SessionOverrides, SummaryRow } from '../contracts.ts'
+import type { AttemptFilter, AttemptPage, BreakerView, BudgetState, CandidateState, ChannelState, ChannelCredentialState, ExportFormat, KeyTestBatch, LedgerExport, Operation, PluginStatus, ProviderView, SessionOverrides, SummaryRow } from '../contracts.ts'
 export interface BillingApi {
   getStatus(): Promise<PluginStatus>; listProviders(): Promise<ProviderView[]>
   listChannelStates(): Promise<ChannelState[]>
+  /** 0.6.0 新增；旧宿主可暂不提供，面板据此隐藏相关卡片。 */
+  listBreakerStates?(): Promise<BreakerView[]>
+  resetBreaker?(channelId: string): Promise<BreakerView[]>
+  getBudgetState?(): Promise<BudgetState>
+  exportLedger?(filter: AttemptFilter, format: ExportFormat): Promise<LedgerExport>
   getChannelCredential?(channelId: string, expectedCredentialRef: string): Promise<ChannelCredentialState>
   setChannelCredential?(channelId: string, expectedCredentialRef: string, keys: string[]): Promise<ChannelCredentialState>
   unsetChannelCredential?(channelId: string, expectedCredentialRef: string): Promise<ChannelCredentialState>

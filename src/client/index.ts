@@ -12,13 +12,13 @@ export const inject = ['remote']
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.remote.$mount(TYPERT_REMOTE))
   ctx.plugin({
-    name: 'web-search-billing-panel', inject: ['remote.webSearchBilling', 'slots', 'configForms'],
+    name: 'dsh-search-ledger-panel', inject: ['remote.searchLedger', 'slots', 'configForms'],
     apply(child: Context) {
-      const form = child.configForms.get<RoutingConfig>('web-search-billing')
-      const api = billingApi(child.remote.webSearchBilling)
+      const form = child.configForms.get<RoutingConfig>('dsh-search-ledger')
+      const api = billingApi(child.remote.searchLedger)
       const Panel = () => React.createElement(App, { api, form })
       // 挂到设置侧边栏（settings.section），与「通用/模型/插件」并列，而不是插件管理器的内置插件列表。
-      child.effect(() => child.configForms.whileServed(['web-search-billing'], () => child.slots.inject('settings.section', () => child.slots.register({ name: 'settings.section', id: 'web-search-billing', order: 21, label: () => 'DSH 搜索账本' }, Panel))))
+      child.effect(() => child.configForms.whileServed(['dsh-search-ledger'], () => child.slots.inject('settings.section', () => child.slots.register({ name: 'settings.section', id: 'dsh-search-ledger', order: 21, label: () => 'DSH 搜索账本' }, Panel))))
     },
   })
 }

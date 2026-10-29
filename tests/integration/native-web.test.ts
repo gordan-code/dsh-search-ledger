@@ -35,9 +35,11 @@ vi.mock('@deepseek-ai/dsh-web-fetch-http', () => ({
 
 const require = createRequire(import.meta.url)
 const dshRoot = dirname(require.resolve('@deepseek-ai/dsh/package.json'))
+const hostVersion = JSON.parse(readFileSync(join(dshRoot, 'package.json'), 'utf8')).version
 const loadDsh = (packageName: string): Promise<Record<string, any>> => {
   const manifest = require.resolve(`${packageName}/package.json`, { paths: [dshRoot] })
-  expect(JSON.parse(readFileSync(manifest, 'utf8')).version).toBe('0.2.1-rc.2')
+  expect(['0.2.1-rc.2', '0.2.1-rc.3']).toContain(hostVersion)
+  expect(JSON.parse(readFileSync(manifest, 'utf8')).version).toBe(hostVersion)
   return import(pathToFileURL(require.resolve(packageName, { paths: [dshRoot] })).href) as Promise<Record<string, any>>
 }
 
@@ -215,13 +217,13 @@ describe('原生 dsh-tool-web → WebRuntime → 宿主计量插件', () => {
       return key.endsWith('pool-a') ? new Response('{}', { status: 401 }) : new Response('{"results":[{"url":"https://synthetic.invalid/result"}]}')
     })
     const harness = await createHarness({ selection: { search: 'web-search-metered' }, channels: [relay], providerBindings: { 'relay-model': { search: relay.id } } })
-    const stored = await harness.ctx.webSearchBilling.setChannelCredential(relay.id, relay.credentialRef, ['synthetic-pool-a', 'synthetic-pool-b'])
+    const stored = await harness.ctx.searchLedger.setChannelCredential(relay.id, relay.credentialRef, ['synthetic-pool-a', 'synthetic-pool-b'])
     expect(stored).toMatchObject({ keyCount: 2, source: 'pool' })
     expect(JSON.stringify(stored)).not.toContain('synthetic-pool')
     expect((await executeTool(harness, 'web_search', { queries: ['q1'] }, 'relay-model')).isError).toBeFalsy()
     expect((await executeTool(harness, 'web_search', { queries: ['q2'] }, 'relay-model')).isError).toBeFalsy()
     expect(used).toEqual(['Bearer synthetic-pool-a', 'Bearer synthetic-pool-b', 'Bearer synthetic-pool-b'])
-    expect(harness.ctx.webSearchBilling.listAttempts({}, null, 20).items).toHaveLength(3)
+    expect(harness.ctx.searchLedger.listAttempts({}, null, 20).items).toHaveLength(3)
   })
   it('通过真实工具注册表执行单查询、多查询 web_search 及 web_fetch', async () => {
     const relay = searchChannel('relay-search')
@@ -258,20 +260,20 @@ describe('原生 dsh-tool-web → WebRuntime → 宿主计量插件', () => {
     expect(requests.filter(request => request.method === 'POST' && request.url.endsWith('/search'))).toHaveLength(4)
     expect(requests.filter(request => request.url.endsWith('/page'))).toHaveLength(1)
 
-    const summary = harness.ctx.webSearchBilling.getSummary({})
+    const summary = harness.ctx.searchLedger.getSummary({})
     expect(summary.find((row: any) => row.channelId === 'relay-search' && row.operation === 'search')).toMatchObject({ total: 3, billable: 3 })
     expect(summary.find((row: any) => row.channelId === 'official-search' && row.operation === 'search')).toMatchObject({ total: 1, billable: 1, amountMicros: '5000' })
     expect(summary.find((row: any) => row.channelId === 'official-search' && row.operation === 'fetch')).toMatchObject({ total: 1, billable: 1, amountMicros: '5000' })
     expect(summary.find((row: any) => row.channelId === 'synthetic-fetch' && row.operation === 'fetch')).toMatchObject({ total: 1, billable: 1 })
 
-    const attempts = harness.ctx.webSearchBilling.listAttempts({}, undefined, 20).items
+    const attempts = harness.ctx.searchLedger.listAttempts({}, undefined, 20).items
     expect(attempts.map((item: any) => item.sourceProviderId)).toEqual(expect.arrayContaining(['relay-model', 'official-model', 'fetch-model']))
     const before = requests.length
-    expect(harness.ctx.webSearchBilling.getStatus().totalAttempts).toBe(6)
-    harness.ctx.webSearchBilling.listChannelStates()
-    harness.ctx.webSearchBilling.getSummary({})
+    expect(harness.ctx.searchLedger.getStatus().totalAttempts).toBe(6)
+    harness.ctx.searchLedger.listChannelStates()
+    harness.ctx.searchLedger.getSummary({})
     expect(requests).toHaveLength(before)
-    expect(harness.ctx.webSearchBilling.listAttempts({}, undefined, 20).items).toHaveLength(6)
+    expect(harness.ctx.searchLedger.listAttempts({}, undefined, 20).items).toHaveLength(6)
   })
 })
 
@@ -303,7 +305,7 @@ it('未绑定的计量路由保持零 HTTP 请求和零账本记录', async () =
   expect(result.error.message).toContain('当前provider未绑定渠道')
   expect(result.error.info).toMatchObject({ code: 'ROUTE_UNBOUND' })
   expect(requests).toHaveLength(0)
-  expect(harness.ctx.webSearchBilling.getSummary({})).toEqual([])
+  expect(harness.ctx.searchLedger.getSummary({})).toEqual([])
 })
 
 it('原生Search/Fetch使用TinyFish、千帆、Tavily有序接力，实际HTTP逐次入账', async () => {
@@ -334,7 +336,7 @@ it('原生Search/Fetch使用TinyFish、千帆、Tavily有序接力，实际HTTP�
   expect(fetched.isError, JSON.stringify(fetched.error)).toBeFalsy()
   expect(fetched.value.body.content).toBe('Tavily正文')
   expect(calls).toHaveLength(4)
-  const attempts = harness.ctx.webSearchBilling.listAttempts({}, null, 20).items
+  const attempts = harness.ctx.searchLedger.listAttempts({}, null, 20).items
   expect(attempts).toHaveLength(4)
   expect(attempts.every((row: any) => row.sourceProviderId === 'unchanged-model')).toBe(true)
   expect(new Set(attempts.map((row: any) => row.operationId)).size).toBe(2)
@@ -356,7 +358,7 @@ it.each([['tinyfish', 'search'], ['tinyfish', 'fetch'], ['qianfan', 'search'], [
   const result = await executeTool(harness, operation === 'search' ? 'web_search' : 'web_fetch', operation === 'search' ? { queries: ['synthetic'] } : { url: 'https://synthetic.invalid/doc' }, 'origin')
   expect(result.isError, JSON.stringify(result.error)).toBeFalsy()
   expect(count).toBe(1)
-  const rows = harness.ctx.webSearchBilling.listAttempts({}, null, 10).items
+  const rows = harness.ctx.searchLedger.listAttempts({}, null, 10).items
   expect(rows).toHaveLength(1)
   expect(rows[0]).toMatchObject({ operation, sourceProviderId: 'origin', outcome: 'billable', amountMicros: null })
 })

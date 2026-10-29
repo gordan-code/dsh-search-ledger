@@ -20,11 +20,30 @@ export interface FailoverSettings {
   attemptTimeoutMs: number
   totalTimeoutMs: number
 }
+/** 熔断只描述判定参数；渠道是否冷却由账本终态与复位标记推导。 */
+export interface BreakerSettings {
+  enabled: boolean
+  failureThreshold: number
+  windowMs: number
+  cooldownMs: number
+}
+/** 预算按自然日或自然月统计，币种互不折算。 */
+export interface BudgetSettings {
+  enabled: boolean
+  window: 'day' | 'month'
+  /** 未设置的币种不设限额。 */
+  limits: Partial<Record<Currency, string>>
+  /** 跨币种合计的请求次数上限；null 表示不限。 */
+  requests: number | null
+  onExceed: 'warn' | 'block' | 'fallback'
+}
 export interface RoutingConfig {
   channels: Channel[]
   providerBindings: Record<string, Partial<Record<Operation, string>>>
   globalOverrides: Partial<Record<Operation, string | null>>
   failover?: Partial<Record<Operation, FailoverSettings>>
+  breaker?: BreakerSettings
+  budget?: BudgetSettings
 }
 export interface RequestSource { profileId: string; sessionId?: string; sourceProviderId?: string; sourceModel?: string }
 export interface RouteSnapshot extends RequestSource {
@@ -68,6 +87,45 @@ export interface WebOperationStatus {
   /** 配置状态不等于调用成功；成功证据仅来自账本。 */
   selectionSource?: 'runtime-entry' | 'settings-only' | 'unknown'
   registered?: boolean | null; available?: boolean | null
+}
+/** 熔断状态只暴露判定结果，不含查询正文或凭证。 */
+export interface BreakerView {
+  channelId: string
+  channelName: string
+  open: boolean
+  failures: number
+  threshold: number
+  /** 冷却结束时间；仅 open 时有值。 */
+  cooldownUntil: string | null
+  lastFailureAt: string | null
+  resetAt: string | null
+}
+/** 预算用量与上限；amountMicros 为字符串微单位，避免浮点误差。 */
+export interface BudgetUsage {
+  currency: Currency
+  amountMicros: string
+  limit: string | null
+  exceeded: boolean
+}
+export interface BudgetState {
+  enabled: boolean
+  window: 'day' | 'month'
+  windowFrom: string
+  windowTo: string
+  onExceed: 'warn' | 'block' | 'fallback'
+  requests: number
+  requestLimit: number | null
+  currencies: BudgetUsage[]
+  exceeded: boolean
+}
+export type ExportFormat = 'csv' | 'json'
+/** 导出只含脱敏账本字段；不含查询正文、正文内容、凭证或会话ID。 */
+export interface LedgerExport {
+  filename: string
+  mimeType: string
+  content: string
+  rowCount: number
+  truncated: boolean
 }
 export interface RouteStatus { channelId: string | null; source: 'global' | 'binding' | 'none' | 'ordered'; ready: boolean; reason: string | null }
 export interface CandidateState { channelId: string; capabilities: Operation[]; credentialReady: boolean; reason: string | null }

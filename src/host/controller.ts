@@ -4,7 +4,7 @@ import type {} from '@deepseek-ai/dsh-api-remote-access'
 import type {} from '@deepseek-ai/dsh-agent'
 import type { RemoteAccessResourceOf } from '@deepseek-ai/dsh-typert-protocol'
 import { TypertRemoteService, Remote, RemoteError, principalOf } from '@deepseek-ai/dsh-typert-protocol'
-import type { AttemptFilter, AttemptPage, CandidateState, ChannelState, ChannelCredentialState, KeyTestBatch, Operation, PluginStatus, ProviderView, SessionOverrides, SummaryRow } from '../contracts.ts'
+import type { AttemptFilter, AttemptPage, BreakerView, BudgetState, CandidateState, ChannelState, ChannelCredentialState, ExportFormat, KeyTestBatch, LedgerExport, Operation, PluginStatus, ProviderView, SessionOverrides, SummaryRow } from '../contracts.ts'
 export interface ControllerBackend {
   getStatus(): PluginStatus; listProviders(): ProviderView[]; getSummary(filter: AttemptFilter): SummaryRow[]
   listAttempts(filter: AttemptFilter, cursor: string | null, limit: number): AttemptPage
@@ -17,11 +17,15 @@ export interface ControllerBackend {
   setChannelCredential(channelId: string, expectedCredentialRef: string, keys: string[]): Promise<ChannelCredentialState>
   unsetChannelCredential(channelId: string, expectedCredentialRef: string): Promise<ChannelCredentialState>
   testChannelKeys(channelId: string, expectedCredentialRef: string, operation: Operation, keys: string[] | null, expectedKeyCount: number, expectedChannelSignature: string, signal?: AbortSignal): Promise<KeyTestBatch>
+  listBreakerStates(): BreakerView[]
+  resetBreaker(channelId: string): BreakerView[]
+  getBudgetState(): BudgetState
+  exportLedger(filter: AttemptFilter, format: ExportFormat): LedgerExport
 }
-declare module '@deepseek-ai/cordis' { interface Context { webSearchBilling: BillingController } }
+declare module '@deepseek-ai/cordis' { interface Context { searchLedger: BillingController } }
 export class BillingController extends TypertRemoteService {
-  constructor(ctx: Context, private readonly backend: ControllerBackend) { super(ctx, 'webSearchBilling') }
-  private owner(): void { if (principalOf(this.ctx.invocation) !== undefined) throw new RemoteError('remote-access/denied', '仅宿主所有者可访问搜索计费管理', { action: 'webSearchBilling', reason: 'owner-only' }) }
+  constructor(ctx: Context, private readonly backend: ControllerBackend) { super(ctx, 'searchLedger') }
+  private owner(): void { if (principalOf(this.ctx.invocation) !== undefined) throw new RemoteError('remote-access/denied', '仅宿主所有者可访问搜索计费管理', { action: 'searchLedger', reason: 'owner-only' }) }
   @Remote
   getStatus(): PluginStatus { this.owner(); return this.backend.getStatus() }
   @Remote
@@ -43,6 +47,14 @@ export class BillingController extends TypertRemoteService {
   getCandidateStates(operation: Operation, providerId: string | null, sessionId: string | null): Promise<CandidateState[]> { this.owner(); return this.backend.getCandidateStates(operation, providerId, sessionId) }
   @Remote
   deleteChannel(channelId: string, expectedRevision: number): Promise<number> { this.owner(); return this.backend.deleteChannel(channelId, expectedRevision) }
+  @Remote
+  listBreakerStates(): BreakerView[] { this.owner(); return this.backend.listBreakerStates() }
+  @Remote
+  resetBreaker(channelId: string): BreakerView[] { this.owner(); return this.backend.resetBreaker(channelId) }
+  @Remote
+  getBudgetState(): BudgetState { this.owner(); return this.backend.getBudgetState() }
+  @Remote
+  exportLedger(filter: AttemptFilter, format: ExportFormat): LedgerExport { this.owner(); return this.backend.exportLedger(filter, format) }
   @Remote
   getSummary(filter: AttemptFilter): SummaryRow[] { this.owner(); return this.backend.getSummary(filter) }
   @Remote

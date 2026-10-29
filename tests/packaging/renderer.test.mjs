@@ -33,22 +33,22 @@ test('Renderer实际Loader可注册并materialize插件，依赖只使用宿主R
   installGatewayClient(ctx)
   let panel = null; let removed = false
   ctx.provide('configForms', {
-    get: id => { assert.equal(id, 'web-search-billing'); return {} },
-    whileServed: (names, register) => { assert.deepEqual(Array.from(names), ['web-search-billing']); return register(new Set(names)) },
+    get: id => { assert.equal(id, 'dsh-search-ledger'); return {} },
+    whileServed: (names, register) => { assert.deepEqual(Array.from(names), ['dsh-search-ledger']); return register(new Set(names)) },
   })
   // 配置页必须挂到设置侧边栏（settings.section），而不是插件管理器的内置插件列表。
   ctx.provide('slots', {
     inject: (name, register) => { assert.equal(name, 'settings.section'); return register() },
     register: (meta, component) => {
       assert.equal(meta.name, 'settings.section')
-      assert.equal(meta.id, 'web-search-billing')
+      assert.equal(meta.id, 'dsh-search-ledger')
       assert.equal(meta.order, 21)
       assert.equal(meta.label(), 'DSH 搜索账本')
       panel = component; return () => { removed = true }
     },
   })
   const fiber = await ctx.plugin(client)
-  assert.equal(typeof ctx.remote.webSearchBilling.getSummary, 'function')
+  assert.equal(typeof ctx.remote.searchLedger.getSummary, 'function')
   assert.equal(typeof panel, 'function', 'Remote挂载后配置页必须实际激活')
   await fiber.dispose()
   assert.equal(removed, true)

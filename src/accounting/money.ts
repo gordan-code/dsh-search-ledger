@@ -17,6 +17,17 @@ export function priceToUnitMicros(perThousand: string): bigint {
   return value
 }
 
+/** 把最多六位小数的十进制金额换算为微单位整数。 */
+export function decimalToMicros(value: string): bigint {
+  if (typeof value !== 'string' || !/^\d+(?:\.\d{1,6})?$/.test(value)) {
+    throw new RangeError('金额必须是非负十进制字符串，且最多六位小数')
+  }
+  const [whole, fraction = ''] = value.split('.')
+  const micros = BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, '0') || '0')
+  if (micros > SQLITE_MAX_INTEGER) throw new RangeError('金额超出 SQLite 整数范围')
+  return micros
+}
+
 /** 把金额整数规范化为可安全传输和持久化的十进制整数文本。 */
 export function formatMicros(micros: string | bigint): string {
   let value: bigint

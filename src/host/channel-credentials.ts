@@ -26,7 +26,7 @@ export class ChannelCredentials {
   constructor(private readonly deps: Deps) {}
   private key(channelId: string) {
     const id = createHash('sha256').update(JSON.stringify([this.deps.profileId, channelId])).digest('hex')
-    return credentialKey('web-search-billing', `channel-${id}`)
+    return credentialKey('dsh-search-ledger', `channel-${id}`)
   }
   private channel(id: string, expectedRef: string): Channel {
     let channels: Channel[]

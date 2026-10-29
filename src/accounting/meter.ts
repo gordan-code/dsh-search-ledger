@@ -11,6 +11,9 @@ import { isTransportError, endpointFor, validateEndpoint, validateFetchUrl, vali
 import { requiresCredential } from '../channel-kinds.ts'
 import { resolveCandidates } from '../routing/candidates.ts'
 import { abortable, mayFailover, OperationBudget } from './failover.ts'
+import { breakerViews, coolingChannels } from './breaker.ts'
+import { budgetState, budgetWindow } from './budget.ts'
+import type { BreakerSettings, BudgetSettings } from '../contracts.ts'
 
 export interface MeteredWebDeps {
   db: BillingDatabase
@@ -22,6 +25,8 @@ export interface MeteredWebDeps {
   quotaSubject: (key: string) => string
   /** 在账本 prepare 成功后锁定渠道身份；失败时取消 prepared 且不得派发网络请求。 */
   afterPrepare?: (route: RouteSnapshot) => void
+  /** 人工熔断复位标记；缺省时只按账本推导，不影响冷却自动恢复。 */
+  breakerResets?: { list: (profileId: string) => Record<string, string> }
   httpFetch?: typeof fetch
   now?: () => Date
 }
@@ -126,7 +131,7 @@ export class MeteredWeb {
     const overrides = source.sessionId === undefined ? {} : this.deps.db.getOverrides(source.profileId, source.sessionId)
     const settings = config.failover?.[operation]
     const ordered = settings?.enabled === true
-    const routes = ordered ? resolveCandidates(config, source, operation, overrides) : [resolveRoute(config, source, operation, overrides)]
+    const routes = this.guard(source.profileId, ordered ? resolveCandidates(config, source, operation, overrides) : [resolveRoute(config, source, operation, overrides)], config)
     let budget = ordered || (this.deps.resolveChannelCredentials && routes.some(route => requiresCredential(route.channel))) ? new OperationBudget(settings?.totalTimeoutMs ?? 60_000, signal) : undefined
     const operationId = randomUUID()
     let available = false
@@ -168,8 +173,63 @@ export class MeteredWeb {
     } finally { budget?.close() }
   }
 
-  private async credentials(route: RouteSnapshot): Promise<(string | undefined)[]> {
-    if (!requiresCredential(route.channel)) return [undefined]
+  /**
+   * 派发前的两道闸门：先按熔断剔除冷却渠道，再按预算决定放行、降级或停止。
+   * 两者都只读账本已有终态，不写任何状态，因此同样的账本总得到同样的判定。
+   */
+  private guard(profileId: string, routes: readonly RouteSnapshot[], config: RoutingConfig): readonly RouteSnapshot[] {
+    if (routes.length === 0) return routes
+    const clock = this.deps.now ?? (() => new Date())
+    let now: Date
+    try { now = clock() } catch { throw safeError('TIME_INVALID', '时间无效') }
+    if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw safeError('TIME_INVALID', '时间无效')
+    const afterBreaker = this.applyBreaker(profileId, routes, config.breaker, now)
+    return this.applyBudget(profileId, afterBreaker, config.budget, now)
+  }
+
+  private applyBreaker(profileId: string, routes: readonly RouteSnapshot[], settings: BreakerSettings | undefined, now: Date): readonly RouteSnapshot[] {
+    if (settings?.enabled !== true || routes.length === 0) return routes
+    const channels = [...new Map(routes.map(route => [route.channel.id, { id: route.channel.id, name: route.channel.name }])).values()]
+    let observations
+    try {
+      const since = new Date(now.getTime() - settings.windowMs).toISOString()
+      observations = this.deps.db.recentOutcomes(profileId, since)
+    } catch (error) {
+      if (error instanceof BillingError) throw error
+      throw safeError('DB_QUERY_FAILED', '熔断状态读取失败，已停止派发')
+    }
+    let resets: Record<string, string> = {}
+    try { resets = this.deps.breakerResets?.list(profileId) ?? {} } catch { throw safeError('DB_QUERY_FAILED', '熔断复位标记读取失败，已停止派发') }
+    const cooling = coolingChannels(breakerViews(observations, channels, settings, resets, now.getTime()))
+    const kept = routes.filter(route => !cooling.has(route.channel.id))
+    if (kept.length === 0 && cooling.size > 0) {
+      const names = routes.filter(route => cooling.has(route.channel.id)).map(route => route.channel.name).join('、')
+      throw safeError('CHANNEL_COOLING_DOWN', `候选渠道连续失败已进入冷却：${names}；可稍后重试或在渠道页手动复位`)
+    }
+    return kept
+  }
+
+  private applyBudget(profileId: string, routes: readonly RouteSnapshot[], settings: BudgetSettings | undefined, now: Date): readonly RouteSnapshot[] {
+    if (settings?.enabled !== true || routes.length === 0) return routes
+    let state
+    try {
+      const range = budgetWindow(now, settings.window)
+      state = budgetState(this.deps.db.budgetUsage(profileId, range.from, range.to), settings, range)
+    } catch (error) {
+      if (error instanceof BillingError) throw error
+      throw safeError('DB_QUERY_FAILED', '预算用量读取失败，已停止派发')
+    }
+    if (!state.exceeded) return routes
+    if (settings.onExceed === 'warn') return routes
+    if (settings.onExceed === 'fallback') {
+      const free = routes.filter(route => route.channel.billingClass === 'free')
+      if (free.length > 0) return free
+      throw safeError('BUDGET_EXCEEDED', '预算已用尽且没有免费候选渠道，已停止派发')
+    }
+    throw safeError('BUDGET_EXCEEDED', `预算已用尽（${settings.window === 'day' ? '当日' : '本月'}），已停止派发；可在面板调整预算或改用免费渠道`)
+  }
+
+  private async credentials(route: RouteSnapshot): Promise<(string | undefined)[]> {    if (!requiresCredential(route.channel)) return [undefined]
     if (this.deps.resolveChannelCredentials) {
       let keys: string[]
       try { keys = await this.deps.resolveChannelCredentials(route.channel) } catch { throw safeError('CREDENTIAL_UNAVAILABLE', '渠道凭证不可用') }

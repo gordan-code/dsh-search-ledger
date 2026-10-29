@@ -1,6 +1,6 @@
 // 只读取本地账本，刷新不会发送搜索 API；币种分别呈现。
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import type { AttemptFilter, AttemptView, ProviderView, RoutingConfig, SummaryRow } from '../contracts.ts'
+import type { AttemptFilter, AttemptView, ExportFormat, LedgerExport, ProviderView, RoutingConfig, SummaryRow } from '../contracts.ts'
 import { amount } from './api.ts'
 import type { BillingApi } from './api.ts'
 import { EmptyState, SectionCard } from './components.tsx'
@@ -33,12 +33,31 @@ function latestAttempt(items: AttemptView[]): AttemptView | undefined {
   return [...items].sort((a, b) => Date.parse(b.completedAt || b.startedAt) - Date.parse(a.completedAt || a.startedAt))[0]
 }
 
+/** 导出内容由宿主生成，浏览器只负责落盘；不做任何二次拼接。 */
+function saveFile(file: LedgerExport): void {
+  if (typeof document === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') throw new Error('当前环境不支持文件下载')
+  const url = URL.createObjectURL(new Blob([file.content], { type: file.mimeType }))
+  try {
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = file.filename
+    anchor.rel = 'noopener'
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  }
+}
+
 export function Usage({ api, config, providers }: { api: BillingApi; config?: RoutingConfig; providers: ProviderView[] }) {
   const [filter, setFilter] = useState<AttemptFilter>(today)
   const [rows, setRows] = useState<SummaryRow[]>([])
   const [attempts, setAttempts] = useState<AttemptView[]>([])
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [message, setMessage] = useState('尚未读取本地账本')
+  const [exportNote, setExportNote] = useState('')
+  const [exporting, setExporting] = useState<ExportFormat | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
   const requestRef = useRef(0)
   const mounted = useRef(true)
@@ -118,9 +137,27 @@ export function Usage({ api, config, providers }: { api: BillingApi; config?: Ro
     const channel = config?.channels.find(item => item.id === id)
     return channel ? `${channel.name}${channel.archived ? '（已归档）' : ''}` : (fallbackName || id)
   }
+  const exportSupported = typeof api.exportLedger === 'function'
+  const doExport = async (format: ExportFormat) => {
+    setExporting(format)
+    try {
+      const file = await api.exportLedger?.(filter, format)
+      if (!file) throw new Error('当前宿主版本未提供导出接口')
+      saveFile(file)
+      setExportNote(`已导出 ${file.rowCount} 条记录${file.truncated ? '；已达单次上限，更早的记录未包含' : ''}`)
+    } catch (error) {
+      setExportNote(error instanceof Error ? error.message : '导出失败')
+    } finally {
+      setExporting(null)
+    }
+  }
 
   return <div className="dsh-stack">
-    <SectionCard title="用量与费用" description="自动读取本地账本，筛选条件变化后重新读取。不同币种不合并；未知价格不会被当作免费。credits 仅为本地预留，不等于服务商实际 usage。" actions={<button type="button" onClick={() => setRefreshTick(value => value + 1)}>刷新本地账本</button>}>
+    <SectionCard title="用量与费用" description="自动读取本地账本，筛选条件变化后重新读取。不同币种不合并；未知价格不会被当作免费。credits 仅为本地预留，不等于服务商实际 usage。" actions={<div className="dsh-inline-actions">
+      <button type="button" onClick={() => setRefreshTick(value => value + 1)}>刷新本地账本</button>
+      <button type="button" disabled={!exportSupported || exporting !== null} onClick={() => { void doExport('csv') }}>{exporting === 'csv' ? '导出中…' : '导出 CSV'}</button>
+      <button type="button" disabled={!exportSupported || exporting !== null} onClick={() => { void doExport('json') }}>{exporting === 'json' ? '导出中…' : '导出 JSON'}</button>
+    </div>}>
       <div className="dsh-filter-grid">
         <label>开始（含）<input type="datetime-local" value={localInput(filter.from)} onChange={event => set('from', event.target.value ? new Date(event.target.value).toISOString() : '')} /></label>
         <label>结束（不含）<input type="datetime-local" value={localInput(filter.to)} onChange={event => set('to', event.target.value ? new Date(event.target.value).toISOString() : '')} /></label>
@@ -130,6 +167,7 @@ export function Usage({ api, config, providers }: { api: BillingApi; config?: Ro
         <label>币种<Select aria-label="筛选币种" value={filter.currency ?? ''} onValueChange={value => set('currency', value as 'CNY' | 'USD' | '')}><option value="">全部币种</option><option>CNY</option><option>USD</option></Select></label>
       </div>
       <p className="dsh-action-note" role="status">{message}</p>
+      {exportNote && <p className="dsh-action-note" role="status">{exportNote}</p>}
     </SectionCard>
 
     {state === 'error' ? <div className="dsh-alert" role="alert">{message}</div> : state === 'loading' && rows.length === 0 ? <EmptyState title="正在读取本地账本">筛选条件不会触发网络搜索，只读取本地计量记录。</EmptyState> : rows.length === 0 && state === 'ready' ? <EmptyState title="筛选范围内暂无记录">空结果不等于免费；请调整时间、渠道或币种后重试。</EmptyState> : <>

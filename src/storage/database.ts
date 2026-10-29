@@ -14,6 +14,8 @@ import type {
 } from '../contracts.ts'
 import { BillingError } from '../contracts.ts'
 import { formatMicros, priceToUnitMicros, SQLITE_MAX_INTEGER } from '../accounting/money.ts'
+import type { BreakerObservation } from '../accounting/breaker.ts'
+import type { BudgetUsageTotal } from '../accounting/budget.ts'
 
 import { initializeDatabase } from './migrations.ts'
 const MAX_LIST_LIMIT = 200
@@ -400,6 +402,14 @@ export class BillingDatabase {
     return { items, nextCursor: next }
   }
 
+  /** 导出用：一次取回有上限的完整记录集，顺序与分页接口一致。 */
+  allViews(profileId: string, filter: AttemptFilter, limit: number): { items: AttemptView[]; truncated: boolean } {
+    ensureString(profileId, 'profileId')
+    if (!Number.isSafeInteger(limit) || limit <= 0) throw new BillingError('INVALID_LIMIT', '导出条数上限无效')
+    const rows = this.filteredRows(profileId, filter).sort(compareDesc)
+    return { items: rows.slice(0, limit).map(row => this.toView(row)), truncated: rows.length > limit }
+  }
+
   private filteredRows(profileId: string, filter: AttemptFilter): StoredAttempt[] {
     const rows = this.selectProfileAttempts(profileId)
     return rows.filter(row => {
@@ -449,6 +459,50 @@ export class BillingDatabase {
 
   hasChannelAttempts(profileId: string, channelId: string): boolean {
     return !!this.db.prepare('SELECT 1 FROM attempts WHERE profile_id=? AND channel_id=? LIMIT 1').get(profileId, channelId)
+  }
+
+  /** 熔断判定输入：窗口内已终结的记录，按开始时间倒序，只含判定所需字段。 */
+  recentOutcomes(profileId: string, since: string): BreakerObservation[] {
+    ensureString(profileId, 'profileId')
+    const parsed = parseStartedAt(since)
+    const statement = this.db.prepare(`
+      SELECT channel_id, outcome, started_at FROM attempts
+      WHERE profile_id = ? AND started_at >= ? AND outcome IN ('billable', 'empty', 'failed', 'unknown')
+      ORDER BY started_at DESC, attempt_id DESC
+    `)
+    return (statement.all(profileId, parsed.toISOString()) as SqlRow[]).map(row => ({
+      channelId: String(row.channel_id),
+      outcome: row.outcome as BreakerObservation['outcome'],
+      startedAt: String(row.started_at),
+    }))
+  }
+
+  /**
+   * 预算用量：金额只累计已确认计费的金额，次数统计所有已离开 prepared 的记录。
+   * 派发前取消的记录从未产生上游请求，不计入次数。
+   */
+  budgetUsage(profileId: string, from: string, to: string): BudgetUsageTotal {
+    ensureString(profileId, 'profileId')
+    const start = parseStartedAt(from).toISOString()
+    const end = parseStartedAt(to).toISOString()
+    const amountStatement = this.db.prepare(`
+      SELECT currency, SUM(amount_micros) AS total FROM attempts
+      WHERE profile_id = ? AND started_at >= ? AND started_at < ?
+        AND outcome = 'billable' AND amount_micros IS NOT NULL
+      GROUP BY currency
+    `)
+    amountStatement.setReadBigInts(true)
+    const amounts: Partial<Record<Currency, string>> = {}
+    for (const row of amountStatement.all(profileId, start, end) as SqlRow[]) {
+      const total = row.total === null || row.total === undefined ? 0n : BigInt(row.total as bigint | number)
+      amounts[row.currency as Currency] = formatMicros(total)
+    }
+    const count = this.db.prepare(`
+      SELECT COUNT(*) AS count FROM attempts
+      WHERE profile_id = ? AND started_at >= ? AND started_at < ?
+        AND outcome <> 'prepared' AND (error_code IS NULL OR error_code <> 'PRE_DISPATCH_CANCELLED')
+    `).get(profileId, start, end)
+    return { amounts, requests: asSafeInteger(count?.count, '请求次数') }
   }
 
   getOverrides(profileId: string, sessionId: string): SessionOverrides {

@@ -1,6 +1,6 @@
 // 仅用于已安装插件的项目隔离profile；禁止读取真实DSH_HOME、发外网请求或调用LLM。
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
 import { resolve, join } from 'node:path'
@@ -13,7 +13,7 @@ const profile = process.argv[2] ?? 'billing-v020-test'
 if (!/^billing-(test|package-test|v020-test)$/.test(profile)) throw new Error('仅允许项目隔离测试profile')
 const overlay = join(root, 'profiles', profile, 'cordis.patch.yml')
 // 重复验收时保留已归档ID；不能靠重写夹具复活渠道或擦除旧账本。
-const database = join(root, 'web-search-billing', 'usage.sqlite')
+const database = join(root, 'dsh-search-ledger', 'usage.sqlite')
 let retired = []
 let priorFallback = []
 if (existsSync(database)) {
@@ -60,7 +60,7 @@ const service = (kind, endpointBase, capabilities) => ({
 })
 const services = [service('tinyfish', 'https://api.search.tinyfish.ai', ['search', 'fetch']), service('qianfan', 'https://qianfan.baidubce.com/v2/ai_search/web_search', ['search']), service('tavily', 'https://api.tavily.com', ['search', 'fetch'])]
 mkdirSync(resolve('.validation'), { recursive: true })
-writeFileSync(overlay, `- id: web-search-billing
+writeFileSync(overlay, `- id: dsh-search-ledger
   config:
     channels:
       - id: smoke-searxng
@@ -94,33 +94,33 @@ globalThis.fetch = async (url, init) => {
 const { ctx, shutdown } = await runProfile({ environment: loadLayeredEnv('dsh', root), profile, patchFiles: [], args: ['--host', '127.0.0.1', '--port', '0', '--no-open'] })
 try {
   assert.equal(ctx.profileContext.home, root)
-  const status = ctx.webSearchBilling.getStatus()
-  assert.equal(status.version, '0.5.1', '必须验证新版而非旧安装缓存')
+  const status = ctx.searchLedger.getStatus()
+  assert.equal(status.version, JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version, '必须验证当前版本而非旧安装缓存')
   assert.ok(ctx.typert.getPackage('dsh-search-ledger', 'host'), 'Host反射须由真实Typert Loader登记')
   assert.equal(status.active, true)
   assert.equal(status.configError, null)
-  assert.ok(ctx.settings.describe().some(row => String(row.ns) === 'web-search-billing'))
-  const before = ctx.webSearchBilling.getSummary({}).reduce((n, row) => n + row.total, 0)
+  assert.ok(ctx.settings.describe().some(row => String(row.ns) === 'dsh-search-ledger'))
+  const before = ctx.searchLedger.getSummary({}).reduce((n, row) => n + row.total, 0)
   const result = await ctx.web.search({ query: 'synthetic smoke', maxResults: 1 })
   assert.equal(result.sources.length, 1)
-  const rows = ctx.webSearchBilling.getSummary({})
+  const rows = ctx.searchLedger.getSummary({})
   assert.equal(rows.reduce((n, row) => n + row.total, 0), before + 1)
   assert.equal(rows[0].amountMicros, '0')
   assert.equal(calls, 1)
-  const revision = ctx.settings.describe().find(row => String(row.ns) === 'web-search-billing').revision
-  await assert.rejects(ctx.webSearchBilling.deleteChannel(unused, revision + 1), /changed|revision/i)
-  assert.equal(ctx.webSearchBilling.listChannelStates().find(row => row.id === unused).canDelete, true)
-  const nextRevision = await ctx.webSearchBilling.deleteChannel(unused, revision)
+  const revision = ctx.settings.describe().find(row => String(row.ns) === 'dsh-search-ledger').revision
+  await assert.rejects(ctx.searchLedger.deleteChannel(unused, revision + 1), /changed|revision/i)
+  assert.equal(ctx.searchLedger.listChannelStates().find(row => row.id === unused).canDelete, true)
+  const nextRevision = await ctx.searchLedger.deleteChannel(unused, revision)
   assert.ok(nextRevision > revision)
-  const updated = ctx.settings.describe().find(row => String(row.ns) === 'web-search-billing').value
+  const updated = ctx.settings.describe().find(row => String(row.ns) === 'dsh-search-ledger').value
   assert.equal(updated.channels.find(row => row.id === unused).archived, true)
-  await assert.rejects(ctx.webSearchBilling.deleteChannel('smoke-searxng', nextRevision), { code: 'CHANNEL_IN_USE' })
-  assert.equal(ctx.webSearchBilling.getSummary({}).reduce((n, row) => n + row.total, 0), before + 1)
+  await assert.rejects(ctx.searchLedger.deleteChannel('smoke-searxng', nextRevision), { code: 'CHANNEL_IN_USE' })
+  assert.equal(ctx.searchLedger.getSummary({}).reduce((n, row) => n + row.total, 0), before + 1)
   assert.equal(calls, 1, '诊断和渠道管理不能发送Web请求')
-  const active = ctx.settings.describe().find(row => String(row.ns) === 'web-search-billing')
+  const active = ctx.settings.describe().find(row => String(row.ns) === 'dsh-search-ledger')
   const old = structuredClone(active.value)
   const first = { ...old.channels.find(row => row.id === 'smoke-searxng'), id: `smoke-fallback-first-${randomUUID()}`, name: '模拟限流', endpointBase: 'https://search.example.test/first' }
-  await ctx.settings.mutate('web-search-billing', [
+  await ctx.settings.mutate('dsh-search-ledger', [
     { op: 'set', path: ['channels'], value: [...services, first, ...old.channels.filter(channel => !services.some(service => service.id === channel.id))] },
     { op: 'set', path: ['globalOverrides'], value: {} },
     { op: 'set', path: ['failover'], value: { search: { enabled: true, attemptTimeoutMs: 1000, totalTimeoutMs: 5000 } } },
@@ -129,35 +129,35 @@ try {
   const result2 = await ctx.web.search({ query: 'synthetic fallback', maxResults: 1 })
   assert.equal(result2.sources.length, 1)
   assert.equal(calls, 3, '三种缺Key渠道零请求，SearXNG限流后仅向下一项发一次')
-  const related = ctx.webSearchBilling.listAttempts({}, null, 200).items
+  const related = ctx.searchLedger.listAttempts({}, null, 200).items
   const firstRow = related.find(row => row.channelId === first.id)
   assert.equal(firstRow.outcome, 'failed')
   assert.equal(related.filter(row => row.operationId === firstRow.operationId).length, 2)
-  const candidateStatus = await ctx.webSearchBilling.getCandidateStates('search', null, null)
+  const candidateStatus = await ctx.searchLedger.getCandidateStates('search', null, null)
   assert.equal(candidateStatus.filter(row => row.channelId.startsWith('smoke-missing-')).every(row => row.credentialReady === false), true)
   assert.equal(calls, 3, '读取候选就绪状态不发送请求')
   const poolId = 'smoke-missing-tinyfish'
-  assert.equal((await ctx.webSearchBilling.getChannelCredential(poolId, '')).keyCount, 0)
-  const stored = await ctx.webSearchBilling.setChannelCredential(poolId, '', ['synthetic-pool-a', 'synthetic-pool-b'])
+  assert.equal((await ctx.searchLedger.getChannelCredential(poolId, '')).keyCount, 0)
+  const stored = await ctx.searchLedger.setChannelCredential(poolId, '', ['synthetic-pool-a', 'synthetic-pool-b'])
   assert.equal(stored.keyCount, 2); assert.equal(stored.source, 'pool')
   assert.equal(JSON.stringify(stored).includes('synthetic-pool'), false)
-  assert.equal((await ctx.webSearchBilling.getChannelCredential(poolId, '')).keyCount, 2)
-  assert.equal((await ctx.webSearchBilling.getCandidateStates('search', null, null)).find(row => row.channelId === poolId).credentialReady, true)
-  assert.equal((await ctx.webSearchBilling.unsetChannelCredential(poolId, '')).configured, false)
+  assert.equal((await ctx.searchLedger.getChannelCredential(poolId, '')).keyCount, 2)
+  assert.equal((await ctx.searchLedger.getCandidateStates('search', null, null)).find(row => row.channelId === poolId).credentialReady, true)
+  assert.equal((await ctx.searchLedger.unsetChannelCredential(poolId, '')).configured, false)
   assert.equal(calls, 3, 'Key管理只读写隔离宿主凭据，不发送请求')
-  const testChannel = ctx.settings.describe().find(row => String(row.ns) === 'web-search-billing').value.channels.find(channel => channel.id === poolId)
+  const testChannel = ctx.settings.describe().find(row => String(row.ns) === 'dsh-search-ledger').value.channels.find(channel => channel.id === poolId)
   const signature = operation => { const price = testChannel.prices[operation]; return JSON.stringify([testChannel.id, testChannel.name, testChannel.kind, testChannel.billingClass, testChannel.enabled, testChannel.archived ?? false, testChannel.endpointBase, testChannel.credentialRef ?? '', [...testChannel.capabilities].sort(), operation, price?.perThousand ?? null, price?.currency ?? null, price?.policy ?? null, testChannel.monthlyCredits ?? 1000]) }
   manualMode = true
-  const tested = await ctx.webSearchBilling.testChannelKeys(poolId, '', 'search', ['synthetic-pool-a', 'synthetic-pool-b'], 2, signature('search'))
+  const tested = await ctx.searchLedger.testChannelKeys(poolId, '', 'search', ['synthetic-pool-a', 'synthetic-pool-b'], 2, signature('search'))
   assert.deepEqual(tested.results.map(row => row.state), ['auth-rejected', 'success'])
   assert.equal(JSON.stringify(tested).includes('synthetic-pool'), false)
-  const fetchTest = await ctx.webSearchBilling.testChannelKeys(poolId, '', 'fetch', ['synthetic-pool-b'], 1, signature('fetch'))
+  const fetchTest = await ctx.searchLedger.testChannelKeys(poolId, '', 'fetch', ['synthetic-pool-b'], 1, signature('fetch'))
   assert.equal(fetchTest.results[0].state, 'success')
   assert.equal(manualCalls, 3, '手动测试只对指定渠道逐Key各一次')
-  const attempts = ctx.webSearchBilling.listAttempts({}, null, 200).items
+  const attempts = ctx.searchLedger.listAttempts({}, null, 200).items
   assert.equal(attempts.filter(row => row.operationId === tested.operationId).length, 2)
   assert.equal(attempts.filter(row => row.operationId === fetchTest.operationId).length, 1)
-  assert.equal((await ctx.webSearchBilling.getChannelCredential(poolId, '')).configured, false, '输入测试不自动保存Key')
+  assert.equal((await ctx.searchLedger.getChannelCredential(poolId, '')).configured, false, '输入测试不自动保存Key')
   console.log('隔离profile：Key输入Search/Fetch测试、401/成功、3次实际模拟请求=3条账目、不转渠道/不保存通过')
   console.log('隔离profile：多Key宿主持久化、脱敏状态、候选池就绪与移除通过')
   console.log('隔离profile：Loader/Settings/Remote/WebRuntime、模拟落账、真实revision冲突和安全删除通过')

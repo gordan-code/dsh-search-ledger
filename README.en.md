@@ -6,7 +6,7 @@ Channel management and cost tracking for DSH's native `web_search` and `web_fetc
 
 If you use DeepSeek's official API alongside a relay or another search service, you need to decide where each request goes, what happens when it fails, and how to count the cost. This plugin puts those settings and records in one place. Bind search channels to model providers, manage each channel's keys, and inspect the actual requests in a local ledger.
 
-Version **0.5.1** targets **DSH 0.2.1-rc.2**. It tracks search and fetch requests routed through the plugin, not model-token usage. The costs shown are local estimates, not provider invoices.
+The development version **0.6.0** targets **DSH 0.2.1-rc.2 and 0.2.1-rc.3**. It tracks search and fetch requests routed through the plugin, not model-token usage. The costs shown are local estimates, not provider invoices.
 
 ## Features
 
@@ -16,6 +16,8 @@ Version **0.5.1** targets **DSH 0.2.1-rc.2**. It tracks search and fetch request
 - Enable ordered failover when you need it. Engines without a usable key are skipped; failures, rate limits, and timeouts move to the next configured channel. Success, including a valid empty search result, stops the chain.
 - Keep a record of each actual attempt. Related fallback attempts share an `operationId`, and historical records keep the price used at the time of the request.
 - Filter usage by date, channel, source provider, session, and currency. The UI supports dark mode, narrow panels, keyboard navigation, and long dropdown lists.
+- The diagnostics page checks backend selection, provider routing and credential readiness without sending a search or testing a key, and groups recent recorded attempts by operation.
+- Export the ledger as CSV or JSON. The development version also includes optional budget and circuit-breaker status; both are disabled by default.
 
 You can enter keys directly in the UI and test them individually. Tests ask you to confirm the potential cost first. They do not save your input or switch to another channel.
 
@@ -45,11 +47,11 @@ Prices, free allowances, and limits depend on your provider's account plan. Sear
 
 ## Installation
 
-Requires Node.js **≥22.19** and **DSH 0.2.1-rc.2**. Other DSH versions have not been verified. Do not bypass the compatibility check to force an installation.
+The development version requires Node.js **≥22.19** and **DSH 0.2.1-rc.2 or 0.2.1-rc.3**. Other DSH versions have not been verified. Do not bypass the compatibility check to force an installation.
 
 ### Install from npm
 
-`dsh-search-ledger@0.5.1` is published on npm. Stop all DSH processes sharing this DSH_HOME and back up the target profile and plugin data before installing:
+`dsh-search-ledger@0.5.1` is published on npm but supports only DSH 0.2.1-rc.2; the development version's rc.3 support has not been published. Stop all DSH processes sharing this DSH_HOME and back up the target profile and plugin data before installing:
 
 ```powershell
 dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
@@ -61,16 +63,16 @@ The repository does not provide a prebuilt tarball. If `minimumReleaseAge` rejec
 
 ### Switching from the old name
 
-The project was previously called `dsh-web-search-billing` and is now `dsh-search-ledger`. The version remains 0.5.1; the rename does not change billing behavior.
+The project was previously called `dsh-web-search-billing` and is now `dsh-search-ledger`. From 0.6.1 on, the internal identities match the package name: the Loader entry id, the Settings namespace, the credential namespace, the service name, and the data directory all use `dsh-search-ledger`.
 
-If the old package is installed, stop DSH and back up the profile and `$DSH_HOME/web-search-billing/` first. Remove the old package before installing the new one. Do not install both in the same profile: they share configuration entries and tool backends and will conflict.
+When upgrading from 0.6.0 or earlier, stop DSH first and rename the whole `$DSH_HOME/web-search-billing/` directory to `$DSH_HOME/dsh-search-ledger/`. Move `usage.sqlite` and `installation-salt` together: historical usage and the quota subject are keyed on those two files, and a missing one looks like a fresh install. Then remove the old package and install the new one. Do not install both in the same profile: they share configuration entries and tool backends and will conflict.
 
 ```powershell
 dsh plugin --profile web remove dsh-web-search-billing
-dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
+dsh plugin --profile web add "dsh-search-ledger@0.6.1" --ignore-scripts
 ```
 
-On Desktop, use `desktop` as the profile for the corresponding `remove` / `add` commands. Internal configuration keys, credential identifiers, and the `web-search-billing` data directory keep their old names. Do not rename or delete them. After switching, check channel settings, key status, provider bindings, and historical usage before making requests.
+On Desktop, use `desktop` as the profile for the corresponding `remove` / `add` commands. After switching, check channel settings, key status, provider bindings, and historical usage before making requests.
 
 ## Configuration
 
@@ -94,6 +96,14 @@ Each key gets one attempt, with a maximum of 10 seconds per key and 60 seconds f
 
 Pools support up to 32 keys. The rotation cursor for normal requests is shared within the current process and resets after a restart.
 
+### Diagnostics and export
+
+Choose a provider and Search or Fetch on the diagnostics page to inspect backend selection, the default route, and credential readiness. Readable credentials do not prove authentication works, and the default route excludes session overrides. The timeline reads at most 200 recent attempts; a group can be incomplete at that boundary. It cannot reconstruct skipped or unrecorded requests.
+
+Diagnostic JSON export requires confirmation and includes plugin version, check status, outcome totals and recent operation, status, time, and HTTP status metadata. It excludes channel names, provider IDs, keys, queries, and page contents. Times may still be sensitive; review the file before sharing. The separate ledger CSV / JSON export includes channel and provider metadata and is limited to 20,000 rows.
+
+Budget and circuit-breaker settings are currently configured in the host configuration file; the UI shows status and supports breaker reset. Budgets use only the current profile's local ledger and confirmed amounts. Timeouts, other clients, and concurrent requests can make actual spending exceed the limit; it is not a substitute for provider account limits. Enabling either guard can change dispatch behavior.
+
 ## How costs are counted
 
 The unit is an actual API attempt, not a conversation turn. One tool call with several queries can send several underlying requests.
@@ -112,7 +122,7 @@ Tavily credits are also a local safeguard. Within one DSH_HOME, the same key sha
 
 Key pools use the host's credential storage, isolated by DSH_HOME, profile, and channel. They are not written into plugin configuration or the ledger, and do not replace model credentials with the same name. Default local host storage is not an encrypted vault; protect your local account and files.
 
-The ledger does not retain keys, Authorization headers, search queries, or page content. It keeps accounting metadata such as channel identity, request attribution, timestamps, outcomes, and prices. Data lives in `$DSH_HOME/web-search-billing/`.
+The ledger does not retain keys, Authorization headers, search queries, or page content. It keeps accounting metadata such as channel identity, request attribution, timestamps, outcomes, and prices. Data lives in `$DSH_HOME/dsh-search-ledger/`.
 
 Stop processes sharing that directory before making a backup. Keep the database and its related files together with `installation-salt`; do not copy only an actively written main database. Old ledger upgrades create a consistent backup first, and a failed upgrade does not automatically delete the ledger. Do not run old and new versions against the same directory or roll back by editing only the schema version.
 

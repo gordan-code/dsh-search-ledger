@@ -6,7 +6,7 @@ DSH 原生 `web_search` / `web_fetch` 的渠道管理和费用统计插件。
 
 在 DSH 里同时用 DeepSeek 官方 API、中转和其他搜索服务时，搜索该走哪个渠道、失败后换谁、用了多少次，都需要分开配置和查看。这个插件把这些事放到一个页面里：按模型 Provider 绑定搜索渠道，管理每个渠道的 Key，再用本地账本记录实际请求。
 
-当前版本为 **0.5.1**，适配 **DSH 0.2.1-rc.2**。它统计的是经过插件的搜索和抓取请求，不是模型 Token 用量；显示的费用是本地估算，不能代替服务商账单。
+当前开发版本为 **0.6.0**，适配 **DSH 0.2.1-rc.2 / 0.2.1-rc.3**。它统计的是经过插件的搜索和抓取请求，不是模型 Token 用量；显示的费用是本地估算，不能代替服务商账单。
 
 ## 功能
 
@@ -16,6 +16,8 @@ DSH 原生 `web_search` / `web_fetch` 的渠道管理和费用统计插件。
 - 可以开启有序切换。缺 Key 的引擎直接跳过，失败、限流或超时后按配置顺序尝试下一个渠道；成功或合法的空搜索结果会停止切换。
 - 每次实际尝试都会单独记账。同一轮切换通过 `operationId` 关联，历史记录使用请求当时的价格，不会随当前配置重新计算。
 - 用量可以按日期、渠道、来源 Provider、会话和币种筛选。界面支持深色、窄面板、键盘操作和长下拉列表。
+- 诊断页可只读检查后端接管、Provider 路由与候选凭据状态，并按操作关联最近的账本尝试。它不会测试 Key 或发送搜索请求。
+- 用量页支持导出 CSV / JSON；开发版本还包含可选的预算与渠道熔断状态，默认不启用。
 
 Key 可以直接在界面填写，也可以逐个测试。测试需要先确认费用风险，不会自动保存输入或切换到别的渠道。
 
@@ -45,11 +47,11 @@ Key 可以直接在界面填写，也可以逐个测试。测试需要先确认�
 
 ## 安装
 
-需要 Node.js **≥22.19** 和 **DSH 0.2.1-rc.2**。其他 DSH 版本还没有验证，不建议跳过兼容检查强行安装。
+开发版本需要 Node.js **≥22.19** 和 **DSH 0.2.1-rc.2 或 0.2.1-rc.3**。其他 DSH 版本还没有验证，不建议跳过兼容检查强行安装。
 
 ### 从 npm 安装
 
-`dsh-search-ledger@0.5.1` 已发布到 npm。先停止共享该 DSH_HOME 的 DSH 进程，备份目标 Profile 和插件数据，再安装：
+`dsh-search-ledger@0.5.1` 已发布到 npm，但仅支持 DSH 0.2.1-rc.2；开发版本的 rc.3 适配尚未发布。先停止共享该 DSH_HOME 的 DSH 进程，备份目标 Profile 和插件数据，再安装：
 
 ```powershell
 dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
@@ -61,16 +63,16 @@ dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
 
 ### 从旧名称切换
 
-项目原名为 `dsh-web-search-billing`，现改为 `dsh-search-ledger`。版本号仍为 0.5.1，改名不改变计费逻辑。
+项目原名为 `dsh-web-search-billing`，现改为 `dsh-search-ledger`。自 0.6.1 起，内部身份标识与包名统一：Loader 条目 id、Settings 命名空间、凭据命名空间、服务名和数据目录全部使用 `dsh-search-ledger`，不再保留旧名。
 
-如果已经安装旧包，先退出 DSH，备份 Profile 和 `$DSH_HOME/web-search-billing/`，移除旧包后再安装新包。不要把两个包同时装进同一个 Profile：它们使用同一组配置入口和工具后端，会发生冲突。
+从 0.6.0 或更早版本升级时，先退出 DSH，把 `$DSH_HOME/web-search-billing/` 整个目录改名为 `$DSH_HOME/dsh-search-ledger/`。目录里的 `usage.sqlite` 与 `installation-salt` 必须一起搬：历史用量和配额主体都按这两个文件认身份，缺一个就会被当成全新安装。随后移除旧包、安装新包。不要把两个包同时装进同一个 Profile：它们使用同一组配置入口和工具后端，会发生冲突。
 
 ```powershell
 dsh plugin --profile web remove dsh-web-search-billing
-dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
+dsh plugin --profile web add "dsh-search-ledger@0.6.1" --ignore-scripts
 ```
 
-桌面版将 Profile 换成 `desktop`，执行对应的 `remove` / `add`。内部配置键、凭据标识和 `web-search-billing` 数据目录保留旧名，不要手动改名或删除。切换后检查渠道配置、Key 状态、Provider 绑定及历史用量，再开始使用。
+桌面版将 Profile 换成 `desktop`，执行对应的 `remove` / `add`。切换后检查渠道配置、Key 状态、Provider 绑定及历史用量，再开始使用。
 
 ## 配置
 
@@ -94,6 +96,14 @@ dsh plugin --profile web add "dsh-search-ledger@0.5.1" --ignore-scripts
 
 Key 池最多支持 32 个 Key。正常请求的轮换游标在当前进程内共享，重启后重置。
 
+### 诊断与导出
+
+在“诊断”页选择 Provider 和 Search / Fetch，查看后端接管证据、默认路由及候选凭据状态。凭据可读取不等于认证有效；默认路由不包含会话覆盖。时间线最多读取最近 200 条尝试，达到上限时同一次操作可能显示不完整；没有记录的跳过或安装前调用不能推断。
+
+诊断 JSON 导出需要确认，包含插件版本、自检状态、结果统计及最近尝试的操作、状态、时间和 HTTP 状态码，不包含渠道名、Provider ID、Key、查询词或网页正文。时间仍可能敏感，分享前请检查。用量页的 CSV / JSON 是另一个导出，包含渠道和来源 Provider 等元数据，每次最多 20,000 条。
+
+预算与熔断设置目前通过宿主配置文件设置，界面提供状态查看和熔断复位。预算仅依据当前 Profile 的本地账本，金额只统计已确认费用；超时、其他客户端的用量及并发请求可能导致实际费用超过上限，不能代替服务商的账户限额。熔断或预算开启后可能改变派发行为，请先了解配置再启用。
+
 ## 费用怎么算
 
 统计单位是实际 API 尝试，不是聊天轮数。一次工具调用里有多个查询时，可能发送多次底层请求。
@@ -112,7 +122,7 @@ Tavily 的 credits 也只是本地保护。同一 DSH_HOME 下，相同 Key 在�
 
 Key 池保存在宿主凭据存储中，按 DSH_HOME、Profile 和渠道隔离，不写进插件配置或账本，也不覆盖模型的同名凭证。宿主默认的本地存储不是加密保险箱，仍然需要保护本机账户和文件。
 
-账本不保存 Key、Authorization、查询词或网页正文，只保留渠道身份、请求归属、时间、状态和价格等计量信息。数据目录是 `$DSH_HOME/web-search-billing/`。
+账本不保存 Key、Authorization、查询词或网页正文，只保留渠道身份、请求归属、时间、状态和价格等计量信息。数据目录是 `$DSH_HOME/dsh-search-ledger/`。
 
 备份前停掉共享该目录的进程，把数据库及其相关文件和 `installation-salt` 一起保留。不要只复制正在写入的主数据库。旧账本升级前会先做一致性备份；失败不会自动删除账本。也不要在同一目录混跑新旧版本，或只修改数据库版本号来回退。
 

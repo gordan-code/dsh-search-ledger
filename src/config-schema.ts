@@ -9,6 +9,21 @@ const failoverSettings = z.object({
   attemptTimeoutMs: z.number().int().min(1).max(30_000).default(20_000),
   totalTimeoutMs: z.number().int().min(1).max(300_000).default(60_000),
 }).strict()
+const breakerSettings = z.object({
+  enabled: z.boolean().default(false),
+  failureThreshold: z.number().int().min(1).max(20).default(3),
+  windowMs: z.number().int().min(10_000).max(86_400_000).default(300_000),
+  cooldownMs: z.number().int().min(10_000).max(86_400_000).default(600_000),
+}).strict()
+// 金额以十进制字符串承载，避免二进制浮点误差；币种分别限额，不做汇率折算。
+const microsText = z.string().regex(/^\d+(\.\d{1,6})?$/).max(20)
+const budgetSettings = z.object({
+  enabled: z.boolean().default(false),
+  window: z.enum(['day', 'month']).default('day'),
+  limits: z.object({ CNY: microsText.nullable().optional(), USD: microsText.nullable().optional() }).strict().default({}),
+  requests: z.number().int().min(1).max(1_000_000).nullable().default(null),
+  onExceed: z.enum(['warn', 'block', 'fallback']).default('warn'),
+}).strict()
 const schema = z.object({ channels: z.array(z.object({
   id: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/), name: z.string().min(1).max(120),
   kind: z.enum(['deepseek-api', 'searxng', 'tavily', 'local-http', 'tinyfish', 'qianfan']),
@@ -18,6 +33,8 @@ const schema = z.object({ channels: z.array(z.object({
   monthlyCredits: z.number().int().min(0).max(1000).optional(),
 }).strict()).max(100), providerBindings: z.record(z.string().min(1).max(160), selections).default({}), globalOverrides: selections.default({}),
   failover: z.object({ search: failoverSettings.optional(), fetch: failoverSettings.optional() }).strict().optional(),
+  breaker: breakerSettings.optional(),
+  budget: budgetSettings.optional(),
 }).strict()
 export const DEFAULT_CONFIG: RoutingConfig = { channels: [
   { id: 'deepseek-official-api', name: 'DeepSeek 官方 API', kind: 'deepseek-api', billingClass: 'official', enabled: true, endpointBase: 'https://api.deepseek.com/v1/tools', credentialRef: 'DEEPSEEK_API_KEY', capabilities: ['search', 'fetch'], prices: { search: { perThousand: '5', currency: 'CNY', policy: 'official-nonempty' }, fetch: { perThousand: '5', currency: 'CNY', policy: 'official-nonempty' } } },
@@ -51,6 +68,11 @@ export function parseRoutingConfig(input: unknown): RoutingConfig {
       if (!p || (channel.billingClass === 'official' && p.policy !== 'official-nonempty') || (channel.billingClass === 'free' && (p.policy !== 'free' || p.perThousand !== '0'))) throw new BillingError('CONFIG_INVALID', '价格或计费策略与渠道不符')
       if (channel.billingClass === 'service' && p.policy !== 'provider-success') throw new BillingError('CONFIG_INVALID', 'service渠道必须使用provider-success计费策略')
     }
+  }
+  if (config.budget?.enabled === true) {
+    const limits = config.budget.limits
+    // 允许 '0'：表示该币种一律不得产生费用。
+    if ((limits.CNY ?? null) === null && (limits.USD ?? null) === null && config.budget.requests === null) throw new BillingError('CONFIG_INVALID', '预算已启用但未设置任何金额或次数上限')
   }
   return config
 }

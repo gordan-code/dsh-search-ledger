@@ -168,6 +168,7 @@ export const billingStyles = `
 .dsh-web-billing .dsh-price-row > label input, .dsh-web-billing .dsh-price-row > label select { width: 100%; min-width: 0; }
 .dsh-web-billing .dsh-price-row .dsh-price-label { color: var(--dsh-muted); font-weight: 650; }
 .dsh-web-billing .dsh-inline-note { color: var(--dsh-muted); font-size: 12px; }
+.dsh-web-billing .dsh-inline-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .dsh-web-billing .dsh-action-note { margin-top: 9px; color: var(--dsh-muted); font-size: 12px; }
 .dsh-web-billing .dsh-error-note { color: var(--dsh-danger); font-size: 12px; margin-top: 7px; }
 .dsh-web-billing .dsh-route-grid { display: grid; gap: 12px; }

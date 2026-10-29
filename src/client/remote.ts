@@ -7,7 +7,7 @@ export function unwrap<T>(result: RemoteResult<T>): T {
   if (!result.ok) throw new Error(result.error.message)
   return result.value
 }
-export function billingApi(remote: Context['remote']['webSearchBilling']): BillingApi {
+export function billingApi(remote: Context['remote']['searchLedger']): BillingApi {
   const getCandidateStates = typeof remote.getCandidateStates === 'function'
     ? async (operation: Parameters<NonNullable<BillingApi['getCandidateStates']>>[0], providerId: string | null, sessionId: string | null) => unwrap(await remote.getCandidateStates(operation, providerId, sessionId))
     : undefined
@@ -24,6 +24,12 @@ export function billingApi(remote: Context['remote']['webSearchBilling']): Billi
       testChannelKeys: async (id: string, ref: string, operation: 'search' | 'fetch', keys: string[] | null, count: number, signature: string) => unwrap(await remote.testChannelKeys(id, ref, operation, keys, count, signature)),
     } : {}),
     ...(getCandidateStates ? { getCandidateStates } : {}),
+    ...(typeof remote.listBreakerStates === 'function' ? {
+      listBreakerStates: async () => unwrap(await remote.listBreakerStates()),
+      resetBreaker: async (channelId: string) => unwrap(await remote.resetBreaker(channelId)),
+    } : {}),
+    ...(typeof remote.getBudgetState === 'function' ? { getBudgetState: async () => unwrap(await remote.getBudgetState()) } : {}),
+    ...(typeof remote.exportLedger === 'function' ? { exportLedger: async (filter: Parameters<NonNullable<BillingApi['exportLedger']>>[0], format: Parameters<NonNullable<BillingApi['exportLedger']>>[1]) => unwrap(await remote.exportLedger(filter, format)) } : {}),
     deleteChannel: async (id, revision) => unwrap(await remote.deleteChannel(id, revision)),
     getSummary: async filter => unwrap(await remote.getSummary(filter)),
     listAttempts: async (filter, cursor, limit) => unwrap(await remote.listAttempts(filter, cursor, limit)),

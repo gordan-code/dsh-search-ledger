@@ -16,6 +16,7 @@ const externalTables: Record<string, string> = {
   installation_identity: 'CREATE TABLE installation_identity (id INTEGER PRIMARY KEY CHECK(id=1), stamp TEXT NOT NULL)',
   channel_identities: 'CREATE TABLE channel_identities (profile_id TEXT NOT NULL, channel_id TEXT NOT NULL, identity TEXT NOT NULL, PRIMARY KEY(profile_id,channel_id))',
   channel_retirements: 'CREATE TABLE channel_retirements (profile_id TEXT NOT NULL, channel_id TEXT NOT NULL, identity TEXT NOT NULL, PRIMARY KEY(profile_id,channel_id))',
+  breaker_resets: 'CREATE TABLE breaker_resets (profile_id TEXT NOT NULL, channel_id TEXT NOT NULL, reset_at TEXT NOT NULL, PRIMARY KEY(profile_id,channel_id))',
 }
 function definitions(current: number): Map<string, string> {
   const sql = current === 1 ? V1_SCHEMA_SQL : SCHEMA_SQL

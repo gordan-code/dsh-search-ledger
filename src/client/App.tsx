@@ -5,6 +5,8 @@ import type { BillingApi } from './api.ts'
 import { Channels } from './Channels.tsx'
 import { Routing } from './Routing.tsx'
 import { Usage } from './Usage.tsx'
+import { BreakerCard, BudgetCard } from './Health.tsx'
+import { Diagnostics } from './Diagnostics.tsx'
 import { parseRoutingConfig } from '../config-schema.ts'
 import { Badge } from './components.tsx'
 import billingStyles from './styles.ts'
@@ -66,7 +68,7 @@ function StatusOverview({ status }: { status: PluginStatus | null }) {
 }
 
 export function App({ api, form, initialTab = 0 }: AppProps) {
-  const [tab, setTab] = useState(() => Math.max(0, Math.min(2, initialTab)))
+  const [tab, setTab] = useState(() => Math.max(0, Math.min(3, initialTab)))
   const [snapshot, setSnapshot] = useState(() => form.getSnapshot())
   const [providers, setProviders] = useState<ProviderView[]>([])
   const [status, setStatus] = useState<PluginStatus | null>(null)
@@ -99,7 +101,7 @@ export function App({ api, form, initialTab = 0 }: AppProps) {
     return latest
   }
 
-  const tabLabels = ['渠道管理', 'Provider 与覆盖', '用量与费用']
+  const tabLabels = ['渠道管理', 'Provider 与覆盖', '用量与费用', '诊断']
   return <>
     <style dangerouslySetInnerHTML={{ __html: billingStyles }} />
     <section className="dsh-web-billing">
@@ -126,10 +128,15 @@ export function App({ api, form, initialTab = 0 }: AppProps) {
       <nav className="dsh-tabs" aria-label="搜索插件面板" role="tablist">
         {tabLabels.map((label, i) => <button key={label} className="dsh-tab" type="button" aria-selected={tab === i} onClick={() => setTab(i)}>{label}</button>)}
       </nav>
-      {!config ? <div className="dsh-empty"><strong>正在读取配置</strong><span>如持续不可用，请检查 Host 的 web-search-billing 配置入口。</span></div> : <>
+      {!config ? <div className="dsh-empty"><strong>正在读取配置</strong><span>如持续不可用，请检查 Host 的 dsh-search-ledger 配置入口。</span></div> : <>
         {tab === 0 && <Channels api={api} config={config} revision={snapshot.revision} writable={snapshot.writable} save={save} />}
         {tab === 1 && <Routing config={config} providers={providers} status={status ?? undefined} api={api} revision={snapshot.revision} writable={snapshot.writable} save={save} />}
-        {tab === 2 && <Usage api={api} config={config} providers={providers} />}
+        {tab === 2 && <>
+          <BudgetCard api={api} config={config} />
+          <BreakerCard api={api} config={config} />
+          <Usage api={api} config={config} providers={providers} />
+        </>}
+        {tab === 3 && <Diagnostics api={api} status={status} providers={providers} />}
       </>}
     </section>
   </>

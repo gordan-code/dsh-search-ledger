@@ -20,7 +20,7 @@ it('实际WebRuntime选择优先于设置描述，不能把配置意向当作接
   ctx.provide('configEditor', { entries: () => [{ options: { id: 'web', name: '@deepseek-ai/dsh-web' }, fiber: { config: live } }] } as never)
   const config = Object.fromEntries(Object.entries(DEFAULT_CONFIG).map(([key, value]) => [key, { get: () => value }]))
   plugin.apply(ctx, config as never)
-  const status = ctx.webSearchBilling.getStatus()
+  const status = ctx.searchLedger.getStatus()
   expect(status.active).toBe(false)
   expect(status).toMatchObject({ operations: { search: { providerId: 'deepseek-search-api', metered: false }, fetch: { providerId: 'web-fetch-metered', metered: true } }, totalAttempts: 0, lastAttemptAt: null })
   expect(status.routes?.[0]?.search).toMatchObject({ channelId: null, ready: false, source: 'none' })
