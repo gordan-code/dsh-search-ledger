@@ -6,7 +6,7 @@ Channel management and cost tracking for DSH's native `web_search` and `web_fetc
 
 If you use DeepSeek's official API alongside a relay or another search service, you need to decide where each request goes, what happens when it fails, and how to count the cost. This plugin puts those settings and records in one place. Bind search channels to model providers, manage each channel's keys, and inspect the actual requests in a local ledger.
 
-Version **0.6.1** targets **DSH 0.2.1-rc.2 and 0.2.1-rc.3**. It tracks search and fetch requests routed through the plugin, not model-token usage. The costs shown are local estimates, not provider invoices.
+Version **0.6.2** declares only a DSH floor, `>=0.2.0-rc.2`, with no upper bound, so a DSH upgrade is not refused for its version. It tracks search and fetch requests routed through the plugin, not model-token usage. The costs shown are local estimates, not provider invoices.
 
 ## Features
 
@@ -47,14 +47,14 @@ Prices, free allowances, and limits depend on your provider's account plan. Sear
 
 ## Installation
 
-This version requires Node.js **≥22.19** and **DSH 0.2.1-rc.2 or 0.2.1-rc.3**. Other DSH versions have not been verified. Do not bypass the compatibility check to force an installation.
+This version requires Node.js **≥22.19** and DSH **≥0.2.0-rc.2** (a floor only, no upper bound), so a DSH upgrade is not refused by the compatibility check; the development and test baseline is DSH 0.2.1-rc.2, and other versions have not been verified one by one.
 
 ### Install from npm
 
 Stop all DSH processes sharing the DSH_HOME and back up the target profile and plugin data before installing:
 
 ```powershell
-dsh plugin --profile web add "dsh-search-ledger@0.6.1" --ignore-scripts
+dsh plugin --profile web add "dsh-search-ledger@0.6.2" --ignore-scripts
 ```
 
 Replace `web` with your profile name. A plain `npm install` adds the package to a Node project; it does not register the plugin or apply its patch in DSH. If `minimumReleaseAge` rejects a dependency, check it or wait for the required age. Do not delete the lockfile or disable protection globally.

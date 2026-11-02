@@ -1,6 +1,6 @@
 {
   "name": "dsh-search-ledger",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Provider-aware web search and fetch routing, key rotation, failover, and cost tracking for DSH",
   "keywords": [
     "dsh",
@@ -32,7 +32,7 @@
   "types": "lib/types/index.d.ts",
   "engines": {
     "node": ">=22.19.0",
-    "dsh": "0.2.1-rc.2 || 0.2.1-rc.3"
+    "dsh": ">=0.2.0-rc.2"
   },
   "exports": {
     ".": {
@@ -86,17 +86,6 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-agent": "0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-api-remotes": "0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-app-boot": "0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-client-ui-settings": "0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-credentials": "0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-llm": "0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-settings": "0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-web": "0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-web-fetch-http": "0.2.1-rc.2 || 0.2.1-rc.3",
     "@deepseek-ai/schemastery": "^3.0.0",
     "react": "^18.3.1"
   },
@@ -105,13 +94,24 @@
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-agent": "0.2.1-rc.2",
     "@deepseek-ai/dsh-api-gateway": "0.2.1-rc.2",
     "@deepseek-ai/dsh-api-remote-access": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-api-remotes": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-app-boot": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-modules": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-credentials": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-settings": "0.2.1-rc.2",
     "@deepseek-ai/dsh-typert-generator": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.2",
     "@deepseek-ai/dsh-typert-registry": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-web": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-web-fetch-http": "0.2.1-rc.2",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^24.0.0",
     "@types/react": "^18.3.0",

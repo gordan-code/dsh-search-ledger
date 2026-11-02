@@ -3,10 +3,15 @@ import assert from 'node:assert/strict'
 import { readFileSync, existsSync } from 'node:fs'
 import test from 'node:test'
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
-test('bundle具有实际patch及独立Host/Client/Remote导出', () => {
-  assert.equal(pkg.engines.dsh, '0.2.1-rc.2 || 0.2.1-rc.3')
-  for (const [name, range] of Object.entries(pkg.peerDependencies)) {
-    if (name.startsWith('@deepseek-ai/dsh')) assert.equal(range, pkg.engines.dsh, `${name} 应与验证过的宿主版本一致`)
+test('bundle具有实际patch及独立Host/Client/Remote导出，且宿主版本声明只有无上限下界', () => {
+  // DSH 先看 engines.dsh，未声明时再逐个校验 @deepseek-ai/dsh* peer 范围。这里只允许一条
+  // 没有上限的下界：任何上界或版本枚举都会在宿主升级后被判为不兼容，等于每次升级都要改号。
+  assert.equal(pkg.engines.dsh, '>=0.2.0-rc.2')
+  assert.ok(pkg.engines.dsh.startsWith('>='), '只允许下界声明')
+  assert.equal(pkg.engines.dsh.includes('<'), false, '不得包含上界')
+  assert.equal(pkg.engines.dsh.includes('||'), false, '不得枚举兼容版本')
+  for (const name of Object.keys(pkg.peerDependencies)) {
+    assert.equal(name.startsWith('@deepseek-ai/dsh'), false, `${name} 不得以 peer 形式再声明一次宿主版本`)
   }
   assert.equal(pkg.dsh.client.platform, 'web')
   for (const key of ['.', './client', './typert', './remote']) assert.ok(pkg.exports[key])

@@ -6,7 +6,7 @@ DSH 原生 `web_search` / `web_fetch` 的渠道管理和费用统计插件。
 
 在 DSH 里同时用 DeepSeek 官方 API、中转和其他搜索服务时，搜索该走哪个渠道、失败后换谁、用了多少次，都需要分开配置和查看。这个插件把这些事放到一个页面里：按模型 Provider 绑定搜索渠道，管理每个渠道的 Key，再用本地账本记录实际请求。
 
-当前版本为 **0.6.1**，适配 **DSH 0.2.1-rc.2 / 0.2.1-rc.3**。它统计的是经过插件的搜索和抓取请求，不是模型 Token 用量；显示的费用是本地估算，不能代替服务商账单。
+当前版本为 **0.6.2**，清单只声明 DSH 版本下限 `>=0.2.0-rc.2`、不设上限，升级 DSH 不会因版本声明被拒。它统计的是经过插件的搜索和抓取请求，不是模型 Token 用量；显示的费用是本地估算，不能代替服务商账单。
 
 ## 功能
 
@@ -47,14 +47,14 @@ Key 可以直接在界面填写，也可以逐个测试。测试需要先确认�
 
 ## 安装
 
-本版本需要 Node.js **≥22.19** 和 **DSH 0.2.1-rc.2 或 0.2.1-rc.3**。其他 DSH 版本还没有验证，不建议跳过兼容检查强行安装。
+本版本需要 Node.js **≥22.19** 和 DSH **≥0.2.0-rc.2**（只有下限，没有上限），DSH 升级后不会被判定为不兼容；开发与测试基线是 DSH 0.2.1-rc.2，其他版本未逐一验证。
 
 ### 从 npm 安装
 
 安装前先退出共享 DSH_HOME 的 DSH 进程，备份目标 Profile 和插件数据：
 
 ```powershell
-dsh plugin --profile web add "dsh-search-ledger@0.6.1" --ignore-scripts
+dsh plugin --profile web add "dsh-search-ledger@0.6.2" --ignore-scripts
 ```
 
 把 `web` 换成实际 Profile。普通 `npm install` 只会把包加入当前 Node 项目，不会替 DSH 注册插件或应用 patch。遇到 `minimumReleaseAge` 拒绝时，先检查依赖或等待版本满足时间要求，不要删除锁文件或全局关闭保护。
