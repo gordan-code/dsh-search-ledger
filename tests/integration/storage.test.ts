@@ -72,16 +72,19 @@ describe('账本数据库', () => {
 
   it('按 subject/window 跨 profile 和 channel 共享额度，取消 prepared 释放预留', () => {
     const db = makeDb()
+    // startedAt 默认取当前时间，而额度窗口必须是 startedAt 所在 UTC 月份：写死 '2026-10'
+    // 就必须同时写死 startedAt，否则每月 1 号之后这条用例必然报 INVALID_QUOTA。
+    const startedAt = '2026-10-19T00:00:00.000Z'
     const quota = { subject: 'same-key', window: '2026-10', limit: 2, credits: 1 }
-    const a = start({ attemptId: 'quota-a', quota })
-    const b = start({ attemptId: 'quota-b', profileId: 'profile-b', channelId: 'channel-b', ownerToken: 'owner-b', quota })
-    const c = start({ attemptId: 'quota-c', profileId: 'profile-c', ownerToken: 'owner-c', quota })
+    const a = start({ attemptId: 'quota-a', startedAt, quota })
+    const b = start({ attemptId: 'quota-b', profileId: 'profile-b', channelId: 'channel-b', ownerToken: 'owner-b', startedAt, quota })
+    const c = start({ attemptId: 'quota-c', profileId: 'profile-c', ownerToken: 'owner-c', startedAt, quota })
     db.prepare(a)
     db.prepare(b)
     expect(() => db.prepare(c)).toThrow()
     expect(db.cancelPrepared(a.attemptId, a.ownerToken)).toBe(true)
     db.prepare(c)
-    expect(() => db.prepare(start({ attemptId: 'quota-conflict', ownerToken: 'owner-x', quota: { ...quota, limit: 3 } }))).toThrow()
+    expect(() => db.prepare(start({ attemptId: 'quota-conflict', ownerToken: 'owner-x', startedAt, quota: { ...quota, limit: 3 } }))).toThrow()
     db.close()
   })
 
